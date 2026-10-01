@@ -80,8 +80,16 @@ flutter test
 
 The in-app scheduler polls while Tas is running and shows a banner. `flutter_local_notifications` also calls `show` at that moment, and on Android and Windows it attempts `zonedSchedule` when the local IANA timezone name resolves. Delivery after the process has exited was not verified in this environment. Linux uses the in-app banner only.
 
+## Android に入れる
+
+1. `tas-release.apk` をダウンロードする。
+2. ブラウザからのインストールを許可する。
+3. Tas を開く。
+4. アプリ一覧で Tas を長押しし、ホーム画面に追加する。
+
+この APK はデバッグキーストアで署名してある。同じ鍵の新しいビルドを入れると、今のインストールを上書きする。
+
 ## Not verified on the Linux VM that produced this tree
 
-- `flutter build apk` (no Android SDK in that environment).
 - `flutter build windows` (no Windows toolchain).
 - OS notification delivery on Android and Windows, including alarms after the process exits.

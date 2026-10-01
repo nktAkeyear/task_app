@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../app.dart';
 import '../data/task_repository.dart';
@@ -19,6 +20,7 @@ class _SettingsPaneState extends State<SettingsPane> {
   final TextEditingController _name = TextEditingController();
   String? _urlError;
   var _seeded = false;
+  String? _version;
 
   @override
   void didChangeDependencies() {
@@ -30,6 +32,11 @@ class _SettingsPaneState extends State<SettingsPane> {
     _url.text = repo.syncBaseUrl;
     _name.text = repo.deviceName;
     _seeded = true;
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) {
+        setState(() => _version = info.version);
+      }
+    }).catchError((Object _) {});
   }
 
   @override
@@ -118,6 +125,11 @@ class _SettingsPaneState extends State<SettingsPane> {
         const SizedBox(height: 24),
         const _Head('キーボード'),
         const Text('Ctrl+N  タスクを追加\nCtrl+F  検索\nCtrl+Enter  完了にする\nJ / K  前後のタスク\nCtrl+1 から Ctrl+5  受信箱、今日、近日、カレンダー、完了'),
+        const SizedBox(height: 28),
+        Text(
+          _version == null ? 'バージョン' : 'バージョン $_version',
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+        ),
       ],
     );
   }

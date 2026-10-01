@@ -198,6 +198,27 @@ void main() {
     // Silence unused repo warning if the first pair is only for setup.
     expect(low.deviceId, 'aaa');
   });
+
+  test('turning a tag back on restores the link instead of editing fields', () async {
+    final repo = await _repo(deviceId: 'local', at: DateTime(2026, 9, 1, 9));
+    final taskId = await repo.quickAdd('タグ', board: TaskBoard.inbox);
+    final tagId = await repo.createTag('仕事');
+    await repo.toggleTag(taskId, tagId);
+    expect(repo.tagsFor(taskId).map((tag) => tag.id), contains(tagId));
+
+    await repo.toggleTag(taskId, tagId);
+    expect(repo.tagsFor(taskId), isEmpty);
+
+    await repo.toggleTag(taskId, tagId);
+    expect(repo.tagsFor(taskId).map((tag) => tag.id), contains(tagId));
+
+    final linkId = '$taskId:$tagId';
+    final ops = await repo.pendingOps();
+    final delete = ops.lastWhere((op) => op.entityId == linkId && op.deleteHlc != null);
+    final restore = ops.lastWhere((op) => op.entityId == linkId && op.restoreHlc != null);
+    expect(restore.fields, isEmpty);
+    expect(restore.restoreHlc!.compareTo(delete.deleteHlc!), greaterThan(0));
+  });
 }
 
 Future<TaskRepository> _repo({

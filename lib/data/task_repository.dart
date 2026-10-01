@@ -451,7 +451,7 @@ class TaskRepository extends ChangeNotifier {
       }
       final entity = _taskTagToEntity(row);
       if (entity.isDeleted) {
-        await _writeTaskTagFields(id, {'taskId': taskId, 'tagId': tagId});
+        await _restore(entityTaskTag, id);
       } else {
         await _tombstone(entityTaskTag, id, row);
       }
@@ -1013,30 +1013,6 @@ class TaskRepository extends ChangeNotifier {
       ),
     );
     await _enqueue(type: entityChecklist, id: id, values: changes, hlc: hlc);
-  }
-
-  Future<void> _writeTaskTagFields(String id, Map<String, Object?> changes, {Hlc? stamp}) async {
-    final row = await _taskTag(id);
-    if (row == null) {
-      return;
-    }
-    final values = _taskTagValues(row);
-    values.addAll(changes);
-    final clocks = _decodeClocks(row.fieldClocks);
-    final hlc = stamp ?? _clock.tick();
-    for (final key in changes.keys) {
-      clocks[key] = hlc;
-    }
-    await (db.update(db.taskTags)..where((item) => item.id.equals(id))).write(
-      TaskTagsCompanion(
-        taskId: Value(values['taskId'] as String),
-        tagId: Value(values['tagId'] as String),
-        deleted: Value(row.deletedHlc != null),
-        fieldClocks: Value(_encodeClocks(clocks)),
-        updatedAt: Value(_now().millisecondsSinceEpoch),
-      ),
-    );
-    await _enqueue(type: entityTaskTag, id: id, values: changes, hlc: hlc);
   }
 
   Future<void> _tombstone(String type, String id, Object? row) async {

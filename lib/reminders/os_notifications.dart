@@ -50,14 +50,18 @@ class OsNotifications {
         ),
       );
       _ready = granted ?? true;
-      if (!kIsWeb && Platform.isAndroid) {
-        await _plugin
-            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-            ?.requestNotificationsPermission();
-      }
     } catch (error, stack) {
       _ready = false;
       FlutterError.reportError(FlutterErrorDetails(exception: error, stack: stack, library: 'tas notifications'));
+    }
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        await _plugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.requestNotificationsPermission();
+      } catch (_) {
+        // The in-app banner still fires if the system prompt cannot be shown.
+      }
     }
   }
 
