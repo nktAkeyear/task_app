@@ -11,6 +11,8 @@ class ListPane extends StatelessWidget {
     required this.onSmart,
     required this.onList,
     required this.onSettings,
+    this.onCreateTask,
+    this.onTool,
     this.navKeys = true,
     super.key,
   });
@@ -20,6 +22,8 @@ class ListPane extends StatelessWidget {
   final ValueChanged<TaskBoard> onSmart;
   final ValueChanged<String> onList;
   final VoidCallback onSettings;
+  final VoidCallback? onCreateTask;
+  final ValueChanged<String>? onTool;
   final bool navKeys;
 
   @override
@@ -36,7 +40,19 @@ class ListPane extends StatelessWidget {
               children: [
                 const TasMark(),
                 const SizedBox(width: 10),
-                Text('Tas', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                Text(
+                  'Tas',
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const Spacer(),
+                if (onCreateTask != null)
+                  IconButton(
+                    key: const Key('create-task'),
+                    tooltip: 'タスクを作成',
+                    onPressed: onCreateTask,
+                    icon: const Icon(Icons.add),
+                  ),
               ],
             ),
           ),
@@ -83,27 +99,44 @@ class ListPane extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 4),
             child: Row(
               children: [
-                Text('リスト', style: TextStyle(color: scheme.onSurfaceVariant, fontWeight: FontWeight.w700)),
+                Text(
+                  'リスト',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const Spacer(),
-                IconButton(tooltip: 'リストを追加', onPressed: () => _createList(context), icon: const Icon(Icons.add)),
+                IconButton(
+                  tooltip: 'リストを追加',
+                  onPressed: () => _createList(context),
+                  icon: const Icon(Icons.add),
+                ),
               ],
             ),
           ),
           Expanded(
             child: repo.userLists.isEmpty
-                ? const EmptyHint(message: '自分のリストはまだありません。', icon: Icons.list_alt_outlined)
+                ? const EmptyHint(
+                    message: '自分のリストはまだありません。',
+                    icon: Icons.list_alt_outlined,
+                  )
                 : ReorderableListView.builder(
                     buildDefaultDragHandles: false,
                     itemCount: repo.userLists.length,
                     onReorderItem: (oldIndex, newIndex) {
-                      final ids = repo.userLists.map((list) => list.id).toList();
+                      final ids = repo.userLists
+                          .map((list) => list.id)
+                          .toList();
                       final moved = ids.removeAt(oldIndex);
                       ids.insert(newIndex, moved);
                       repo.reorderLists(ids);
                     },
                     itemBuilder: (context, index) {
                       final list = repo.userLists[index];
-                      final count = repo.tasksFor(board: TaskBoard.list, listId: list.id).length;
+                      final count = repo
+                          .tasksFor(board: TaskBoard.list, listId: list.id)
+                          .length;
                       return _ListRow(
                         key: ValueKey(list.id),
                         list: list,
@@ -133,6 +166,44 @@ class ListPane extends StatelessWidget {
                   ),
               ],
             ),
+          if (onTool != null) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                'ツール',
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.timer_outlined),
+              title: const Text('ポモドーロ'),
+              onTap: () => onTool!('pomodoro'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.grid_view_outlined),
+              title: const Text('マトリックス'),
+              onTap: () => onTool!('matrix'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.repeat),
+              title: const Text('習慣'),
+              onTap: () => onTool!('habits'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.menu_book_outlined),
+              title: const Text('日記'),
+              onTap: () => onTool!('diary'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.search),
+              title: const Text('検索'),
+              onTap: () => onTool!('search'),
+            ),
+          ],
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.settings_outlined),
@@ -156,7 +227,8 @@ class ListPane extends StatelessWidget {
       onList(id);
     } on FormatException catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
   }
@@ -169,14 +241,30 @@ class ListPane extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(leading: const Icon(Icons.drive_file_rename_outline), title: const Text('名前を変更'), onTap: () => Navigator.pop(context, 'rename')),
-            ListTile(leading: const Icon(Icons.palette_outlined), title: const Text('色を変える'), onTap: () => Navigator.pop(context, 'color')),
             ListTile(
-              leading: Icon(list.archived ? Icons.unarchive_outlined : Icons.archive_outlined),
+              leading: const Icon(Icons.drive_file_rename_outline),
+              title: const Text('名前を変更'),
+              onTap: () => Navigator.pop(context, 'rename'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.palette_outlined),
+              title: const Text('色を変える'),
+              onTap: () => Navigator.pop(context, 'color'),
+            ),
+            ListTile(
+              leading: Icon(
+                list.archived
+                    ? Icons.unarchive_outlined
+                    : Icons.archive_outlined,
+              ),
               title: Text(list.archived ? 'アーカイブを解除' : 'アーカイブ'),
               onTap: () => Navigator.pop(context, 'archive'),
             ),
-            ListTile(leading: const Icon(Icons.delete_outline), title: const Text('削除'), onTap: () => Navigator.pop(context, 'delete')),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('削除'),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
           ],
         ),
       ),
@@ -187,7 +275,11 @@ class ListPane extends StatelessWidget {
     final repo = RepoScope.of(context);
     switch (action) {
       case 'rename':
-        final name = await _askName(context, title: '名前を変更', initial: list.name);
+        final name = await _askName(
+          context,
+          title: '名前を変更',
+          initial: list.name,
+        );
         if (name != null) {
           await repo.renameList(list.id, name);
         }
@@ -208,7 +300,8 @@ class ListPane extends StatelessWidget {
         if (ok) {
           final message = await repo.deleteList(list.id);
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(message)));
           }
           if (listId == list.id) {
             onSmart(TaskBoard.inbox);
@@ -247,7 +340,9 @@ class _SmartTile extends StatelessWidget {
         selectedTileColor: scheme.primaryContainer.withValues(alpha: 0.65),
         leading: Icon(icon),
         title: Text(label),
-        trailing: count == null ? null : Text('$count', style: TextStyle(color: scheme.onSurfaceVariant)),
+        trailing: count == null
+            ? null
+            : Text('$count', style: TextStyle(color: scheme.onSurfaceVariant)),
         onTap: onTap,
       ),
     );
@@ -276,7 +371,9 @@ class _ListRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: selected ? scheme.primaryContainer.withValues(alpha: 0.65) : Colors.transparent,
+      color: selected
+          ? scheme.primaryContainer.withValues(alpha: 0.65)
+          : Colors.transparent,
       child: ListTile(
         leading: _Dot(color: list.color),
         title: Text(list.name, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -284,10 +381,18 @@ class _ListRow extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('$count', style: TextStyle(color: scheme.onSurfaceVariant)),
-            IconButton(tooltip: 'リストの操作', onPressed: onMenu, icon: const Icon(Icons.more_horiz)),
+            IconButton(
+              tooltip: 'リストの操作',
+              onPressed: onMenu,
+              icon: const Icon(Icons.more_horiz),
+            ),
             ReorderableDragStartListener(
               index: index,
-              child: const SizedBox(width: 44, height: 44, child: Icon(Icons.drag_handle)),
+              child: const SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(Icons.drag_handle),
+              ),
             ),
           ],
         ),
@@ -311,7 +416,11 @@ class _Dot extends StatelessWidget {
   }
 }
 
-Future<String?> _askName(BuildContext context, {required String title, required String initial}) {
+Future<String?> _askName(
+  BuildContext context, {
+  required String title,
+  required String initial,
+}) {
   final controller = TextEditingController(text: initial);
   return showDialog<String>(
     context: context,
@@ -324,8 +433,14 @@ Future<String?> _askName(BuildContext context, {required String title, required 
         onSubmitted: (value) => Navigator.pop(context, value.trim()),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
-        FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('保存')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('キャンセル'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, controller.text.trim()),
+          child: const Text('保存'),
+        ),
       ],
     ),
   );
@@ -349,7 +464,10 @@ Future<int?> _pickColor(BuildContext context, int current) {
                 decoration: BoxDecoration(
                   color: Color(color),
                   shape: BoxShape.circle,
-                  border: Border.all(color: color == current ? Colors.white : Colors.transparent, width: 3),
+                  border: Border.all(
+                    color: color == current ? Colors.white : Colors.transparent,
+                    width: 3,
+                  ),
                 ),
               ),
             ),

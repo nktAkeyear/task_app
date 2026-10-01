@@ -4158,6 +4158,1718 @@ class SettingEntriesCompanion extends UpdateCompanion<SettingRow> {
   }
 }
 
+class $TaskPlacementsTable extends TaskPlacements
+    with TableInfo<$TaskPlacementsTable, TaskPlacementRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskPlacementsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quadrantMeta = const VerificationMeta(
+    'quadrant',
+  );
+  @override
+  late final GeneratedColumn<int> quadrant = GeneratedColumn<int>(
+    'quadrant',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [taskId, quadrant];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_placements';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TaskPlacementRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('quadrant')) {
+      context.handle(
+        _quadrantMeta,
+        quadrant.isAcceptableOrUnknown(data['quadrant']!, _quadrantMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quadrantMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {taskId};
+  @override
+  TaskPlacementRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskPlacementRow(
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      )!,
+      quadrant: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quadrant'],
+      )!,
+    );
+  }
+
+  @override
+  $TaskPlacementsTable createAlias(String alias) {
+    return $TaskPlacementsTable(attachedDatabase, alias);
+  }
+}
+
+class TaskPlacementRow extends DataClass
+    implements Insertable<TaskPlacementRow> {
+  final String taskId;
+  final int quadrant;
+  const TaskPlacementRow({required this.taskId, required this.quadrant});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['task_id'] = Variable<String>(taskId);
+    map['quadrant'] = Variable<int>(quadrant);
+    return map;
+  }
+
+  TaskPlacementsCompanion toCompanion(bool nullToAbsent) {
+    return TaskPlacementsCompanion(
+      taskId: Value(taskId),
+      quadrant: Value(quadrant),
+    );
+  }
+
+  factory TaskPlacementRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskPlacementRow(
+      taskId: serializer.fromJson<String>(json['taskId']),
+      quadrant: serializer.fromJson<int>(json['quadrant']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'taskId': serializer.toJson<String>(taskId),
+      'quadrant': serializer.toJson<int>(quadrant),
+    };
+  }
+
+  TaskPlacementRow copyWith({String? taskId, int? quadrant}) =>
+      TaskPlacementRow(
+        taskId: taskId ?? this.taskId,
+        quadrant: quadrant ?? this.quadrant,
+      );
+  TaskPlacementRow copyWithCompanion(TaskPlacementsCompanion data) {
+    return TaskPlacementRow(
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      quadrant: data.quadrant.present ? data.quadrant.value : this.quadrant,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskPlacementRow(')
+          ..write('taskId: $taskId, ')
+          ..write('quadrant: $quadrant')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(taskId, quadrant);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskPlacementRow &&
+          other.taskId == this.taskId &&
+          other.quadrant == this.quadrant);
+}
+
+class TaskPlacementsCompanion extends UpdateCompanion<TaskPlacementRow> {
+  final Value<String> taskId;
+  final Value<int> quadrant;
+  final Value<int> rowid;
+  const TaskPlacementsCompanion({
+    this.taskId = const Value.absent(),
+    this.quadrant = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TaskPlacementsCompanion.insert({
+    required String taskId,
+    required int quadrant,
+    this.rowid = const Value.absent(),
+  }) : taskId = Value(taskId),
+       quadrant = Value(quadrant);
+  static Insertable<TaskPlacementRow> custom({
+    Expression<String>? taskId,
+    Expression<int>? quadrant,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (taskId != null) 'task_id': taskId,
+      if (quadrant != null) 'quadrant': quadrant,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TaskPlacementsCompanion copyWith({
+    Value<String>? taskId,
+    Value<int>? quadrant,
+    Value<int>? rowid,
+  }) {
+    return TaskPlacementsCompanion(
+      taskId: taskId ?? this.taskId,
+      quadrant: quadrant ?? this.quadrant,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (quadrant.present) {
+      map['quadrant'] = Variable<int>(quadrant.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskPlacementsCompanion(')
+          ..write('taskId: $taskId, ')
+          ..write('quadrant: $quadrant, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $HabitsTable extends Habits with TableInfo<$HabitsTable, HabitRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HabitsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    sortOrder,
+    deleted,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'habits';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HabitRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HabitRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HabitRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $HabitsTable createAlias(String alias) {
+    return $HabitsTable(attachedDatabase, alias);
+  }
+}
+
+class HabitRow extends DataClass implements Insertable<HabitRow> {
+  final String id;
+  final String name;
+  final int sortOrder;
+  final bool deleted;
+  final int createdAt;
+  const HabitRow({
+    required this.id,
+    required this.name,
+    required this.sortOrder,
+    required this.deleted,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['deleted'] = Variable<bool>(deleted);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  HabitsCompanion toCompanion(bool nullToAbsent) {
+    return HabitsCompanion(
+      id: Value(id),
+      name: Value(name),
+      sortOrder: Value(sortOrder),
+      deleted: Value(deleted),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory HabitRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HabitRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'deleted': serializer.toJson<bool>(deleted),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  HabitRow copyWith({
+    String? id,
+    String? name,
+    int? sortOrder,
+    bool? deleted,
+    int? createdAt,
+  }) => HabitRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    sortOrder: sortOrder ?? this.sortOrder,
+    deleted: deleted ?? this.deleted,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  HabitRow copyWithCompanion(HabitsCompanion data) {
+    return HabitRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('deleted: $deleted, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, sortOrder, deleted, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HabitRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.sortOrder == this.sortOrder &&
+          other.deleted == this.deleted &&
+          other.createdAt == this.createdAt);
+}
+
+class HabitsCompanion extends UpdateCompanion<HabitRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<int> sortOrder;
+  final Value<bool> deleted;
+  final Value<int> createdAt;
+  final Value<int> rowid;
+  const HabitsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  HabitsCompanion.insert({
+    required String id,
+    required String name,
+    this.sortOrder = const Value.absent(),
+    this.deleted = const Value.absent(),
+    required int createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt);
+  static Insertable<HabitRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<int>? sortOrder,
+    Expression<bool>? deleted,
+    Expression<int>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (deleted != null) 'deleted': deleted,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  HabitsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<int>? sortOrder,
+    Value<bool>? deleted,
+    Value<int>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return HabitsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      sortOrder: sortOrder ?? this.sortOrder,
+      deleted: deleted ?? this.deleted,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('deleted: $deleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $HabitChecksTable extends HabitChecks
+    with TableInfo<$HabitChecksTable, HabitCheckRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HabitChecksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _habitIdMeta = const VerificationMeta(
+    'habitId',
+  );
+  @override
+  late final GeneratedColumn<String> habitId = GeneratedColumn<String>(
+    'habit_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dayMeta = const VerificationMeta('day');
+  @override
+  late final GeneratedColumn<String> day = GeneratedColumn<String>(
+    'day',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [habitId, day];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'habit_checks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HabitCheckRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('habit_id')) {
+      context.handle(
+        _habitIdMeta,
+        habitId.isAcceptableOrUnknown(data['habit_id']!, _habitIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_habitIdMeta);
+    }
+    if (data.containsKey('day')) {
+      context.handle(
+        _dayMeta,
+        day.isAcceptableOrUnknown(data['day']!, _dayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {habitId, day};
+  @override
+  HabitCheckRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HabitCheckRow(
+      habitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}habit_id'],
+      )!,
+      day: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day'],
+      )!,
+    );
+  }
+
+  @override
+  $HabitChecksTable createAlias(String alias) {
+    return $HabitChecksTable(attachedDatabase, alias);
+  }
+}
+
+class HabitCheckRow extends DataClass implements Insertable<HabitCheckRow> {
+  final String habitId;
+  final String day;
+  const HabitCheckRow({required this.habitId, required this.day});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['habit_id'] = Variable<String>(habitId);
+    map['day'] = Variable<String>(day);
+    return map;
+  }
+
+  HabitChecksCompanion toCompanion(bool nullToAbsent) {
+    return HabitChecksCompanion(habitId: Value(habitId), day: Value(day));
+  }
+
+  factory HabitCheckRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HabitCheckRow(
+      habitId: serializer.fromJson<String>(json['habitId']),
+      day: serializer.fromJson<String>(json['day']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'habitId': serializer.toJson<String>(habitId),
+      'day': serializer.toJson<String>(day),
+    };
+  }
+
+  HabitCheckRow copyWith({String? habitId, String? day}) =>
+      HabitCheckRow(habitId: habitId ?? this.habitId, day: day ?? this.day);
+  HabitCheckRow copyWithCompanion(HabitChecksCompanion data) {
+    return HabitCheckRow(
+      habitId: data.habitId.present ? data.habitId.value : this.habitId,
+      day: data.day.present ? data.day.value : this.day,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitCheckRow(')
+          ..write('habitId: $habitId, ')
+          ..write('day: $day')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(habitId, day);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HabitCheckRow &&
+          other.habitId == this.habitId &&
+          other.day == this.day);
+}
+
+class HabitChecksCompanion extends UpdateCompanion<HabitCheckRow> {
+  final Value<String> habitId;
+  final Value<String> day;
+  final Value<int> rowid;
+  const HabitChecksCompanion({
+    this.habitId = const Value.absent(),
+    this.day = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  HabitChecksCompanion.insert({
+    required String habitId,
+    required String day,
+    this.rowid = const Value.absent(),
+  }) : habitId = Value(habitId),
+       day = Value(day);
+  static Insertable<HabitCheckRow> custom({
+    Expression<String>? habitId,
+    Expression<String>? day,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (habitId != null) 'habit_id': habitId,
+      if (day != null) 'day': day,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  HabitChecksCompanion copyWith({
+    Value<String>? habitId,
+    Value<String>? day,
+    Value<int>? rowid,
+  }) {
+    return HabitChecksCompanion(
+      habitId: habitId ?? this.habitId,
+      day: day ?? this.day,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (habitId.present) {
+      map['habit_id'] = Variable<String>(habitId.value);
+    }
+    if (day.present) {
+      map['day'] = Variable<String>(day.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitChecksCompanion(')
+          ..write('habitId: $habitId, ')
+          ..write('day: $day, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DiaryEntriesTable extends DiaryEntries
+    with TableInfo<$DiaryEntriesTable, DiaryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DiaryEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _dayMeta = const VerificationMeta('day');
+  @override
+  late final GeneratedColumn<String> day = GeneratedColumn<String>(
+    'day',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [day, body, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'diary_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DiaryRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('day')) {
+      context.handle(
+        _dayMeta,
+        day.isAcceptableOrUnknown(data['day']!, _dayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {day};
+  @override
+  DiaryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DiaryRow(
+      day: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DiaryEntriesTable createAlias(String alias) {
+    return $DiaryEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class DiaryRow extends DataClass implements Insertable<DiaryRow> {
+  final String day;
+  final String body;
+  final int updatedAt;
+  const DiaryRow({
+    required this.day,
+    required this.body,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['day'] = Variable<String>(day);
+    map['body'] = Variable<String>(body);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  DiaryEntriesCompanion toCompanion(bool nullToAbsent) {
+    return DiaryEntriesCompanion(
+      day: Value(day),
+      body: Value(body),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DiaryRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DiaryRow(
+      day: serializer.fromJson<String>(json['day']),
+      body: serializer.fromJson<String>(json['body']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'day': serializer.toJson<String>(day),
+      'body': serializer.toJson<String>(body),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  DiaryRow copyWith({String? day, String? body, int? updatedAt}) => DiaryRow(
+    day: day ?? this.day,
+    body: body ?? this.body,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DiaryRow copyWithCompanion(DiaryEntriesCompanion data) {
+    return DiaryRow(
+      day: data.day.present ? data.day.value : this.day,
+      body: data.body.present ? data.body.value : this.body,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DiaryRow(')
+          ..write('day: $day, ')
+          ..write('body: $body, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(day, body, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DiaryRow &&
+          other.day == this.day &&
+          other.body == this.body &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DiaryEntriesCompanion extends UpdateCompanion<DiaryRow> {
+  final Value<String> day;
+  final Value<String> body;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const DiaryEntriesCompanion({
+    this.day = const Value.absent(),
+    this.body = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DiaryEntriesCompanion.insert({
+    required String day,
+    this.body = const Value.absent(),
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : day = Value(day),
+       updatedAt = Value(updatedAt);
+  static Insertable<DiaryRow> custom({
+    Expression<String>? day,
+    Expression<String>? body,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (day != null) 'day': day,
+      if (body != null) 'body': body,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DiaryEntriesCompanion copyWith({
+    Value<String>? day,
+    Value<String>? body,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return DiaryEntriesCompanion(
+      day: day ?? this.day,
+      body: body ?? this.body,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (day.present) {
+      map['day'] = Variable<String>(day.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DiaryEntriesCompanion(')
+          ..write('day: $day, ')
+          ..write('body: $body, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PomodoroSessionsTable extends PomodoroSessions
+    with TableInfo<$PomodoroSessionsTable, PomodoroSessionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PomodoroSessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _finishedAtMeta = const VerificationMeta(
+    'finishedAt',
+  );
+  @override
+  late final GeneratedColumn<int> finishedAt = GeneratedColumn<int>(
+    'finished_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, taskId, finishedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pomodoro_sessions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PomodoroSessionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    }
+    if (data.containsKey('finished_at')) {
+      context.handle(
+        _finishedAtMeta,
+        finishedAt.isAcceptableOrUnknown(data['finished_at']!, _finishedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_finishedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PomodoroSessionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PomodoroSessionRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      ),
+      finishedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}finished_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PomodoroSessionsTable createAlias(String alias) {
+    return $PomodoroSessionsTable(attachedDatabase, alias);
+  }
+}
+
+class PomodoroSessionRow extends DataClass
+    implements Insertable<PomodoroSessionRow> {
+  final String id;
+  final String? taskId;
+  final int finishedAt;
+  const PomodoroSessionRow({
+    required this.id,
+    this.taskId,
+    required this.finishedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || taskId != null) {
+      map['task_id'] = Variable<String>(taskId);
+    }
+    map['finished_at'] = Variable<int>(finishedAt);
+    return map;
+  }
+
+  PomodoroSessionsCompanion toCompanion(bool nullToAbsent) {
+    return PomodoroSessionsCompanion(
+      id: Value(id),
+      taskId: taskId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taskId),
+      finishedAt: Value(finishedAt),
+    );
+  }
+
+  factory PomodoroSessionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PomodoroSessionRow(
+      id: serializer.fromJson<String>(json['id']),
+      taskId: serializer.fromJson<String?>(json['taskId']),
+      finishedAt: serializer.fromJson<int>(json['finishedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'taskId': serializer.toJson<String?>(taskId),
+      'finishedAt': serializer.toJson<int>(finishedAt),
+    };
+  }
+
+  PomodoroSessionRow copyWith({
+    String? id,
+    Value<String?> taskId = const Value.absent(),
+    int? finishedAt,
+  }) => PomodoroSessionRow(
+    id: id ?? this.id,
+    taskId: taskId.present ? taskId.value : this.taskId,
+    finishedAt: finishedAt ?? this.finishedAt,
+  );
+  PomodoroSessionRow copyWithCompanion(PomodoroSessionsCompanion data) {
+    return PomodoroSessionRow(
+      id: data.id.present ? data.id.value : this.id,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      finishedAt: data.finishedAt.present
+          ? data.finishedAt.value
+          : this.finishedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PomodoroSessionRow(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('finishedAt: $finishedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, taskId, finishedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PomodoroSessionRow &&
+          other.id == this.id &&
+          other.taskId == this.taskId &&
+          other.finishedAt == this.finishedAt);
+}
+
+class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSessionRow> {
+  final Value<String> id;
+  final Value<String?> taskId;
+  final Value<int> finishedAt;
+  final Value<int> rowid;
+  const PomodoroSessionsCompanion({
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.finishedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PomodoroSessionsCompanion.insert({
+    required String id,
+    this.taskId = const Value.absent(),
+    required int finishedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       finishedAt = Value(finishedAt);
+  static Insertable<PomodoroSessionRow> custom({
+    Expression<String>? id,
+    Expression<String>? taskId,
+    Expression<int>? finishedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (taskId != null) 'task_id': taskId,
+      if (finishedAt != null) 'finished_at': finishedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PomodoroSessionsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? taskId,
+    Value<int>? finishedAt,
+    Value<int>? rowid,
+  }) {
+    return PomodoroSessionsCompanion(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      finishedAt: finishedAt ?? this.finishedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (finishedAt.present) {
+      map['finished_at'] = Variable<int>(finishedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PomodoroSessionsCompanion(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('finishedAt: $finishedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PomodoroStatesTable extends PomodoroStates
+    with TableInfo<$PomodoroStatesTable, PomodoroStateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PomodoroStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _focusMeta = const VerificationMeta('focus');
+  @override
+  late final GeneratedColumn<bool> focus = GeneratedColumn<bool>(
+    'focus',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("focus" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _remainingMsMeta = const VerificationMeta(
+    'remainingMs',
+  );
+  @override
+  late final GeneratedColumn<int> remainingMs = GeneratedColumn<int>(
+    'remaining_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _runningMeta = const VerificationMeta(
+    'running',
+  );
+  @override
+  late final GeneratedColumn<bool> running = GeneratedColumn<bool>(
+    'running',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("running" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _anchorMsMeta = const VerificationMeta(
+    'anchorMs',
+  );
+  @override
+  late final GeneratedColumn<int> anchorMs = GeneratedColumn<int>(
+    'anchor_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    taskId,
+    focus,
+    remainingMs,
+    running,
+    anchorMs,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pomodoro_state';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PomodoroStateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    }
+    if (data.containsKey('focus')) {
+      context.handle(
+        _focusMeta,
+        focus.isAcceptableOrUnknown(data['focus']!, _focusMeta),
+      );
+    }
+    if (data.containsKey('remaining_ms')) {
+      context.handle(
+        _remainingMsMeta,
+        remainingMs.isAcceptableOrUnknown(
+          data['remaining_ms']!,
+          _remainingMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_remainingMsMeta);
+    }
+    if (data.containsKey('running')) {
+      context.handle(
+        _runningMeta,
+        running.isAcceptableOrUnknown(data['running']!, _runningMeta),
+      );
+    }
+    if (data.containsKey('anchor_ms')) {
+      context.handle(
+        _anchorMsMeta,
+        anchorMs.isAcceptableOrUnknown(data['anchor_ms']!, _anchorMsMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PomodoroStateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PomodoroStateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      ),
+      focus: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}focus'],
+      )!,
+      remainingMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}remaining_ms'],
+      )!,
+      running: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}running'],
+      )!,
+      anchorMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}anchor_ms'],
+      ),
+    );
+  }
+
+  @override
+  $PomodoroStatesTable createAlias(String alias) {
+    return $PomodoroStatesTable(attachedDatabase, alias);
+  }
+}
+
+class PomodoroStateRow extends DataClass
+    implements Insertable<PomodoroStateRow> {
+  final int id;
+  final String? taskId;
+  final bool focus;
+  final int remainingMs;
+  final bool running;
+  final int? anchorMs;
+  const PomodoroStateRow({
+    required this.id,
+    this.taskId,
+    required this.focus,
+    required this.remainingMs,
+    required this.running,
+    this.anchorMs,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || taskId != null) {
+      map['task_id'] = Variable<String>(taskId);
+    }
+    map['focus'] = Variable<bool>(focus);
+    map['remaining_ms'] = Variable<int>(remainingMs);
+    map['running'] = Variable<bool>(running);
+    if (!nullToAbsent || anchorMs != null) {
+      map['anchor_ms'] = Variable<int>(anchorMs);
+    }
+    return map;
+  }
+
+  PomodoroStatesCompanion toCompanion(bool nullToAbsent) {
+    return PomodoroStatesCompanion(
+      id: Value(id),
+      taskId: taskId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taskId),
+      focus: Value(focus),
+      remainingMs: Value(remainingMs),
+      running: Value(running),
+      anchorMs: anchorMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(anchorMs),
+    );
+  }
+
+  factory PomodoroStateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PomodoroStateRow(
+      id: serializer.fromJson<int>(json['id']),
+      taskId: serializer.fromJson<String?>(json['taskId']),
+      focus: serializer.fromJson<bool>(json['focus']),
+      remainingMs: serializer.fromJson<int>(json['remainingMs']),
+      running: serializer.fromJson<bool>(json['running']),
+      anchorMs: serializer.fromJson<int?>(json['anchorMs']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'taskId': serializer.toJson<String?>(taskId),
+      'focus': serializer.toJson<bool>(focus),
+      'remainingMs': serializer.toJson<int>(remainingMs),
+      'running': serializer.toJson<bool>(running),
+      'anchorMs': serializer.toJson<int?>(anchorMs),
+    };
+  }
+
+  PomodoroStateRow copyWith({
+    int? id,
+    Value<String?> taskId = const Value.absent(),
+    bool? focus,
+    int? remainingMs,
+    bool? running,
+    Value<int?> anchorMs = const Value.absent(),
+  }) => PomodoroStateRow(
+    id: id ?? this.id,
+    taskId: taskId.present ? taskId.value : this.taskId,
+    focus: focus ?? this.focus,
+    remainingMs: remainingMs ?? this.remainingMs,
+    running: running ?? this.running,
+    anchorMs: anchorMs.present ? anchorMs.value : this.anchorMs,
+  );
+  PomodoroStateRow copyWithCompanion(PomodoroStatesCompanion data) {
+    return PomodoroStateRow(
+      id: data.id.present ? data.id.value : this.id,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      focus: data.focus.present ? data.focus.value : this.focus,
+      remainingMs: data.remainingMs.present
+          ? data.remainingMs.value
+          : this.remainingMs,
+      running: data.running.present ? data.running.value : this.running,
+      anchorMs: data.anchorMs.present ? data.anchorMs.value : this.anchorMs,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PomodoroStateRow(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('focus: $focus, ')
+          ..write('remainingMs: $remainingMs, ')
+          ..write('running: $running, ')
+          ..write('anchorMs: $anchorMs')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, taskId, focus, remainingMs, running, anchorMs);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PomodoroStateRow &&
+          other.id == this.id &&
+          other.taskId == this.taskId &&
+          other.focus == this.focus &&
+          other.remainingMs == this.remainingMs &&
+          other.running == this.running &&
+          other.anchorMs == this.anchorMs);
+}
+
+class PomodoroStatesCompanion extends UpdateCompanion<PomodoroStateRow> {
+  final Value<int> id;
+  final Value<String?> taskId;
+  final Value<bool> focus;
+  final Value<int> remainingMs;
+  final Value<bool> running;
+  final Value<int?> anchorMs;
+  const PomodoroStatesCompanion({
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.focus = const Value.absent(),
+    this.remainingMs = const Value.absent(),
+    this.running = const Value.absent(),
+    this.anchorMs = const Value.absent(),
+  });
+  PomodoroStatesCompanion.insert({
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.focus = const Value.absent(),
+    required int remainingMs,
+    this.running = const Value.absent(),
+    this.anchorMs = const Value.absent(),
+  }) : remainingMs = Value(remainingMs);
+  static Insertable<PomodoroStateRow> custom({
+    Expression<int>? id,
+    Expression<String>? taskId,
+    Expression<bool>? focus,
+    Expression<int>? remainingMs,
+    Expression<bool>? running,
+    Expression<int>? anchorMs,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (taskId != null) 'task_id': taskId,
+      if (focus != null) 'focus': focus,
+      if (remainingMs != null) 'remaining_ms': remainingMs,
+      if (running != null) 'running': running,
+      if (anchorMs != null) 'anchor_ms': anchorMs,
+    });
+  }
+
+  PomodoroStatesCompanion copyWith({
+    Value<int>? id,
+    Value<String?>? taskId,
+    Value<bool>? focus,
+    Value<int>? remainingMs,
+    Value<bool>? running,
+    Value<int?>? anchorMs,
+  }) {
+    return PomodoroStatesCompanion(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      focus: focus ?? this.focus,
+      remainingMs: remainingMs ?? this.remainingMs,
+      running: running ?? this.running,
+      anchorMs: anchorMs ?? this.anchorMs,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (focus.present) {
+      map['focus'] = Variable<bool>(focus.value);
+    }
+    if (remainingMs.present) {
+      map['remaining_ms'] = Variable<int>(remainingMs.value);
+    }
+    if (running.present) {
+      map['running'] = Variable<bool>(running.value);
+    }
+    if (anchorMs.present) {
+      map['anchor_ms'] = Variable<int>(anchorMs.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PomodoroStatesCompanion(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('focus: $focus, ')
+          ..write('remainingMs: $remainingMs, ')
+          ..write('running: $running, ')
+          ..write('anchorMs: $anchorMs')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$TasDatabase extends GeneratedDatabase {
   _$TasDatabase(QueryExecutor e) : super(e);
   $TasDatabaseManager get managers => $TasDatabaseManager(this);
@@ -4168,6 +5880,14 @@ abstract class _$TasDatabase extends GeneratedDatabase {
   late final $ChecklistItemsTable checklistItems = $ChecklistItemsTable(this);
   late final $OutboxOpsTable outboxOps = $OutboxOpsTable(this);
   late final $SettingEntriesTable settingEntries = $SettingEntriesTable(this);
+  late final $TaskPlacementsTable taskPlacements = $TaskPlacementsTable(this);
+  late final $HabitsTable habits = $HabitsTable(this);
+  late final $HabitChecksTable habitChecks = $HabitChecksTable(this);
+  late final $DiaryEntriesTable diaryEntries = $DiaryEntriesTable(this);
+  late final $PomodoroSessionsTable pomodoroSessions = $PomodoroSessionsTable(
+    this,
+  );
+  late final $PomodoroStatesTable pomodoroStates = $PomodoroStatesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4180,6 +5900,12 @@ abstract class _$TasDatabase extends GeneratedDatabase {
     checklistItems,
     outboxOps,
     settingEntries,
+    taskPlacements,
+    habits,
+    habitChecks,
+    diaryEntries,
+    pomodoroSessions,
+    pomodoroStates,
   ];
 }
 
@@ -6271,6 +7997,1095 @@ typedef $$SettingEntriesTableProcessedTableManager =
       SettingRow,
       PrefetchHooks Function()
     >;
+typedef $$TaskPlacementsTableCreateCompanionBuilder =
+    TaskPlacementsCompanion Function({
+      required String taskId,
+      required int quadrant,
+      Value<int> rowid,
+    });
+typedef $$TaskPlacementsTableUpdateCompanionBuilder =
+    TaskPlacementsCompanion Function({
+      Value<String> taskId,
+      Value<int> quadrant,
+      Value<int> rowid,
+    });
+
+class $$TaskPlacementsTableFilterComposer
+    extends Composer<_$TasDatabase, $TaskPlacementsTable> {
+  $$TaskPlacementsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quadrant => $composableBuilder(
+    column: $table.quadrant,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TaskPlacementsTableOrderingComposer
+    extends Composer<_$TasDatabase, $TaskPlacementsTable> {
+  $$TaskPlacementsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quadrant => $composableBuilder(
+    column: $table.quadrant,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TaskPlacementsTableAnnotationComposer
+    extends Composer<_$TasDatabase, $TaskPlacementsTable> {
+  $$TaskPlacementsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<int> get quadrant =>
+      $composableBuilder(column: $table.quadrant, builder: (column) => column);
+}
+
+class $$TaskPlacementsTableTableManager
+    extends
+        RootTableManager<
+          _$TasDatabase,
+          $TaskPlacementsTable,
+          TaskPlacementRow,
+          $$TaskPlacementsTableFilterComposer,
+          $$TaskPlacementsTableOrderingComposer,
+          $$TaskPlacementsTableAnnotationComposer,
+          $$TaskPlacementsTableCreateCompanionBuilder,
+          $$TaskPlacementsTableUpdateCompanionBuilder,
+          (
+            TaskPlacementRow,
+            BaseReferences<
+              _$TasDatabase,
+              $TaskPlacementsTable,
+              TaskPlacementRow
+            >,
+          ),
+          TaskPlacementRow,
+          PrefetchHooks Function()
+        > {
+  $$TaskPlacementsTableTableManager(
+    _$TasDatabase db,
+    $TaskPlacementsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskPlacementsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskPlacementsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TaskPlacementsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> taskId = const Value.absent(),
+                Value<int> quadrant = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TaskPlacementsCompanion(
+                taskId: taskId,
+                quadrant: quadrant,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String taskId,
+                required int quadrant,
+                Value<int> rowid = const Value.absent(),
+              }) => TaskPlacementsCompanion.insert(
+                taskId: taskId,
+                quadrant: quadrant,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TaskPlacementsTable, TaskPlacementRow>(table),
+                  BaseReferences<
+                    _$TasDatabase,
+                    $TaskPlacementsTable,
+                    TaskPlacementRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TaskPlacementsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$TasDatabase,
+      $TaskPlacementsTable,
+      TaskPlacementRow,
+      $$TaskPlacementsTableFilterComposer,
+      $$TaskPlacementsTableOrderingComposer,
+      $$TaskPlacementsTableAnnotationComposer,
+      $$TaskPlacementsTableCreateCompanionBuilder,
+      $$TaskPlacementsTableUpdateCompanionBuilder,
+      (
+        TaskPlacementRow,
+        BaseReferences<_$TasDatabase, $TaskPlacementsTable, TaskPlacementRow>,
+      ),
+      TaskPlacementRow,
+      PrefetchHooks Function()
+    >;
+typedef $$HabitsTableCreateCompanionBuilder = HabitsCompanion Function({
+  required String id,
+  required String name,
+  Value<int> sortOrder,
+  Value<bool> deleted,
+  required int createdAt,
+  Value<int> rowid,
+});
+typedef $$HabitsTableUpdateCompanionBuilder = HabitsCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<int> sortOrder,
+  Value<bool> deleted,
+  Value<int> createdAt,
+  Value<int> rowid,
+});
+
+class $$HabitsTableFilterComposer
+    extends Composer<_$TasDatabase, $HabitsTable> {
+  $$HabitsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$HabitsTableOrderingComposer
+    extends Composer<_$TasDatabase, $HabitsTable> {
+  $$HabitsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HabitsTableAnnotationComposer
+    extends Composer<_$TasDatabase, $HabitsTable> {
+  $$HabitsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$HabitsTableTableManager
+    extends
+        RootTableManager<
+          _$TasDatabase,
+          $HabitsTable,
+          HabitRow,
+          $$HabitsTableFilterComposer,
+          $$HabitsTableOrderingComposer,
+          $$HabitsTableAnnotationComposer,
+          $$HabitsTableCreateCompanionBuilder,
+          $$HabitsTableUpdateCompanionBuilder,
+          (HabitRow, BaseReferences<_$TasDatabase, $HabitsTable, HabitRow>),
+          HabitRow,
+          PrefetchHooks Function()
+        > {
+  $$HabitsTableTableManager(_$TasDatabase db, $HabitsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HabitsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HabitsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HabitsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => HabitsCompanion(
+                id: id,
+                name: name,
+                sortOrder: sortOrder,
+                deleted: deleted,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                required int createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => HabitsCompanion.insert(
+                id: id,
+                name: name,
+                sortOrder: sortOrder,
+                deleted: deleted,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$HabitsTable, HabitRow>(table),
+                  BaseReferences<_$TasDatabase, $HabitsTable, HabitRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HabitsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$TasDatabase,
+      $HabitsTable,
+      HabitRow,
+      $$HabitsTableFilterComposer,
+      $$HabitsTableOrderingComposer,
+      $$HabitsTableAnnotationComposer,
+      $$HabitsTableCreateCompanionBuilder,
+      $$HabitsTableUpdateCompanionBuilder,
+      (HabitRow, BaseReferences<_$TasDatabase, $HabitsTable, HabitRow>),
+      HabitRow,
+      PrefetchHooks Function()
+    >;
+typedef $$HabitChecksTableCreateCompanionBuilder =
+    HabitChecksCompanion Function({
+      required String habitId,
+      required String day,
+      Value<int> rowid,
+    });
+typedef $$HabitChecksTableUpdateCompanionBuilder =
+    HabitChecksCompanion Function({
+      Value<String> habitId,
+      Value<String> day,
+      Value<int> rowid,
+    });
+
+class $$HabitChecksTableFilterComposer
+    extends Composer<_$TasDatabase, $HabitChecksTable> {
+  $$HabitChecksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get habitId => $composableBuilder(
+    column: $table.habitId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get day => $composableBuilder(
+    column: $table.day,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$HabitChecksTableOrderingComposer
+    extends Composer<_$TasDatabase, $HabitChecksTable> {
+  $$HabitChecksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get habitId => $composableBuilder(
+    column: $table.habitId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get day => $composableBuilder(
+    column: $table.day,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HabitChecksTableAnnotationComposer
+    extends Composer<_$TasDatabase, $HabitChecksTable> {
+  $$HabitChecksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get habitId =>
+      $composableBuilder(column: $table.habitId, builder: (column) => column);
+
+  GeneratedColumn<String> get day =>
+      $composableBuilder(column: $table.day, builder: (column) => column);
+}
+
+class $$HabitChecksTableTableManager
+    extends
+        RootTableManager<
+          _$TasDatabase,
+          $HabitChecksTable,
+          HabitCheckRow,
+          $$HabitChecksTableFilterComposer,
+          $$HabitChecksTableOrderingComposer,
+          $$HabitChecksTableAnnotationComposer,
+          $$HabitChecksTableCreateCompanionBuilder,
+          $$HabitChecksTableUpdateCompanionBuilder,
+          (
+            HabitCheckRow,
+            BaseReferences<_$TasDatabase, $HabitChecksTable, HabitCheckRow>,
+          ),
+          HabitCheckRow,
+          PrefetchHooks Function()
+        > {
+  $$HabitChecksTableTableManager(_$TasDatabase db, $HabitChecksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HabitChecksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HabitChecksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HabitChecksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> habitId = const Value.absent(),
+            Value<String> day = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) => HabitChecksCompanion(habitId: habitId, day: day, rowid: rowid),
+          createCompanionCallback:
+              ({
+                required String habitId,
+                required String day,
+                Value<int> rowid = const Value.absent(),
+              }) => HabitChecksCompanion.insert(
+                habitId: habitId,
+                day: day,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$HabitChecksTable, HabitCheckRow>(table),
+                  BaseReferences<
+                    _$TasDatabase,
+                    $HabitChecksTable,
+                    HabitCheckRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HabitChecksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$TasDatabase,
+      $HabitChecksTable,
+      HabitCheckRow,
+      $$HabitChecksTableFilterComposer,
+      $$HabitChecksTableOrderingComposer,
+      $$HabitChecksTableAnnotationComposer,
+      $$HabitChecksTableCreateCompanionBuilder,
+      $$HabitChecksTableUpdateCompanionBuilder,
+      (
+        HabitCheckRow,
+        BaseReferences<_$TasDatabase, $HabitChecksTable, HabitCheckRow>,
+      ),
+      HabitCheckRow,
+      PrefetchHooks Function()
+    >;
+typedef $$DiaryEntriesTableCreateCompanionBuilder =
+    DiaryEntriesCompanion Function({
+      required String day,
+      Value<String> body,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$DiaryEntriesTableUpdateCompanionBuilder =
+    DiaryEntriesCompanion Function({
+      Value<String> day,
+      Value<String> body,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$DiaryEntriesTableFilterComposer
+    extends Composer<_$TasDatabase, $DiaryEntriesTable> {
+  $$DiaryEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get day => $composableBuilder(
+    column: $table.day,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DiaryEntriesTableOrderingComposer
+    extends Composer<_$TasDatabase, $DiaryEntriesTable> {
+  $$DiaryEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get day => $composableBuilder(
+    column: $table.day,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DiaryEntriesTableAnnotationComposer
+    extends Composer<_$TasDatabase, $DiaryEntriesTable> {
+  $$DiaryEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get day =>
+      $composableBuilder(column: $table.day, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$DiaryEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$TasDatabase,
+          $DiaryEntriesTable,
+          DiaryRow,
+          $$DiaryEntriesTableFilterComposer,
+          $$DiaryEntriesTableOrderingComposer,
+          $$DiaryEntriesTableAnnotationComposer,
+          $$DiaryEntriesTableCreateCompanionBuilder,
+          $$DiaryEntriesTableUpdateCompanionBuilder,
+          (
+            DiaryRow,
+            BaseReferences<_$TasDatabase, $DiaryEntriesTable, DiaryRow>,
+          ),
+          DiaryRow,
+          PrefetchHooks Function()
+        > {
+  $$DiaryEntriesTableTableManager(_$TasDatabase db, $DiaryEntriesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DiaryEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DiaryEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DiaryEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> day = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DiaryEntriesCompanion(
+                day: day,
+                body: body,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String day,
+                Value<String> body = const Value.absent(),
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DiaryEntriesCompanion.insert(
+                day: day,
+                body: body,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$DiaryEntriesTable, DiaryRow>(table),
+                  BaseReferences<_$TasDatabase, $DiaryEntriesTable, DiaryRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DiaryEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$TasDatabase,
+      $DiaryEntriesTable,
+      DiaryRow,
+      $$DiaryEntriesTableFilterComposer,
+      $$DiaryEntriesTableOrderingComposer,
+      $$DiaryEntriesTableAnnotationComposer,
+      $$DiaryEntriesTableCreateCompanionBuilder,
+      $$DiaryEntriesTableUpdateCompanionBuilder,
+      (DiaryRow, BaseReferences<_$TasDatabase, $DiaryEntriesTable, DiaryRow>),
+      DiaryRow,
+      PrefetchHooks Function()
+    >;
+typedef $$PomodoroSessionsTableCreateCompanionBuilder =
+    PomodoroSessionsCompanion Function({
+      required String id,
+      Value<String?> taskId,
+      required int finishedAt,
+      Value<int> rowid,
+    });
+typedef $$PomodoroSessionsTableUpdateCompanionBuilder =
+    PomodoroSessionsCompanion Function({
+      Value<String> id,
+      Value<String?> taskId,
+      Value<int> finishedAt,
+      Value<int> rowid,
+    });
+
+class $$PomodoroSessionsTableFilterComposer
+    extends Composer<_$TasDatabase, $PomodoroSessionsTable> {
+  $$PomodoroSessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PomodoroSessionsTableOrderingComposer
+    extends Composer<_$TasDatabase, $PomodoroSessionsTable> {
+  $$PomodoroSessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PomodoroSessionsTableAnnotationComposer
+    extends Composer<_$TasDatabase, $PomodoroSessionsTable> {
+  $$PomodoroSessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<int> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$PomodoroSessionsTableTableManager
+    extends
+        RootTableManager<
+          _$TasDatabase,
+          $PomodoroSessionsTable,
+          PomodoroSessionRow,
+          $$PomodoroSessionsTableFilterComposer,
+          $$PomodoroSessionsTableOrderingComposer,
+          $$PomodoroSessionsTableAnnotationComposer,
+          $$PomodoroSessionsTableCreateCompanionBuilder,
+          $$PomodoroSessionsTableUpdateCompanionBuilder,
+          (
+            PomodoroSessionRow,
+            BaseReferences<
+              _$TasDatabase,
+              $PomodoroSessionsTable,
+              PomodoroSessionRow
+            >,
+          ),
+          PomodoroSessionRow,
+          PrefetchHooks Function()
+        > {
+  $$PomodoroSessionsTableTableManager(
+    _$TasDatabase db,
+    $PomodoroSessionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PomodoroSessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PomodoroSessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PomodoroSessionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> taskId = const Value.absent(),
+                Value<int> finishedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PomodoroSessionsCompanion(
+                id: id,
+                taskId: taskId,
+                finishedAt: finishedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> taskId = const Value.absent(),
+                required int finishedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PomodoroSessionsCompanion.insert(
+                id: id,
+                taskId: taskId,
+                finishedAt: finishedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PomodoroSessionsTable, PomodoroSessionRow>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$TasDatabase,
+                    $PomodoroSessionsTable,
+                    PomodoroSessionRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PomodoroSessionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$TasDatabase,
+      $PomodoroSessionsTable,
+      PomodoroSessionRow,
+      $$PomodoroSessionsTableFilterComposer,
+      $$PomodoroSessionsTableOrderingComposer,
+      $$PomodoroSessionsTableAnnotationComposer,
+      $$PomodoroSessionsTableCreateCompanionBuilder,
+      $$PomodoroSessionsTableUpdateCompanionBuilder,
+      (
+        PomodoroSessionRow,
+        BaseReferences<
+          _$TasDatabase,
+          $PomodoroSessionsTable,
+          PomodoroSessionRow
+        >,
+      ),
+      PomodoroSessionRow,
+      PrefetchHooks Function()
+    >;
+typedef $$PomodoroStatesTableCreateCompanionBuilder =
+    PomodoroStatesCompanion Function({
+      Value<int> id,
+      Value<String?> taskId,
+      Value<bool> focus,
+      required int remainingMs,
+      Value<bool> running,
+      Value<int?> anchorMs,
+    });
+typedef $$PomodoroStatesTableUpdateCompanionBuilder =
+    PomodoroStatesCompanion Function({
+      Value<int> id,
+      Value<String?> taskId,
+      Value<bool> focus,
+      Value<int> remainingMs,
+      Value<bool> running,
+      Value<int?> anchorMs,
+    });
+
+class $$PomodoroStatesTableFilterComposer
+    extends Composer<_$TasDatabase, $PomodoroStatesTable> {
+  $$PomodoroStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get focus => $composableBuilder(
+    column: $table.focus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get remainingMs => $composableBuilder(
+    column: $table.remainingMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get running => $composableBuilder(
+    column: $table.running,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get anchorMs => $composableBuilder(
+    column: $table.anchorMs,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PomodoroStatesTableOrderingComposer
+    extends Composer<_$TasDatabase, $PomodoroStatesTable> {
+  $$PomodoroStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get focus => $composableBuilder(
+    column: $table.focus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get remainingMs => $composableBuilder(
+    column: $table.remainingMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get running => $composableBuilder(
+    column: $table.running,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get anchorMs => $composableBuilder(
+    column: $table.anchorMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PomodoroStatesTableAnnotationComposer
+    extends Composer<_$TasDatabase, $PomodoroStatesTable> {
+  $$PomodoroStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<bool> get focus =>
+      $composableBuilder(column: $table.focus, builder: (column) => column);
+
+  GeneratedColumn<int> get remainingMs => $composableBuilder(
+    column: $table.remainingMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get running =>
+      $composableBuilder(column: $table.running, builder: (column) => column);
+
+  GeneratedColumn<int> get anchorMs =>
+      $composableBuilder(column: $table.anchorMs, builder: (column) => column);
+}
+
+class $$PomodoroStatesTableTableManager
+    extends
+        RootTableManager<
+          _$TasDatabase,
+          $PomodoroStatesTable,
+          PomodoroStateRow,
+          $$PomodoroStatesTableFilterComposer,
+          $$PomodoroStatesTableOrderingComposer,
+          $$PomodoroStatesTableAnnotationComposer,
+          $$PomodoroStatesTableCreateCompanionBuilder,
+          $$PomodoroStatesTableUpdateCompanionBuilder,
+          (
+            PomodoroStateRow,
+            BaseReferences<
+              _$TasDatabase,
+              $PomodoroStatesTable,
+              PomodoroStateRow
+            >,
+          ),
+          PomodoroStateRow,
+          PrefetchHooks Function()
+        > {
+  $$PomodoroStatesTableTableManager(
+    _$TasDatabase db,
+    $PomodoroStatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PomodoroStatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PomodoroStatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PomodoroStatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> taskId = const Value.absent(),
+                Value<bool> focus = const Value.absent(),
+                Value<int> remainingMs = const Value.absent(),
+                Value<bool> running = const Value.absent(),
+                Value<int?> anchorMs = const Value.absent(),
+              }) => PomodoroStatesCompanion(
+                id: id,
+                taskId: taskId,
+                focus: focus,
+                remainingMs: remainingMs,
+                running: running,
+                anchorMs: anchorMs,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> taskId = const Value.absent(),
+                Value<bool> focus = const Value.absent(),
+                required int remainingMs,
+                Value<bool> running = const Value.absent(),
+                Value<int?> anchorMs = const Value.absent(),
+              }) => PomodoroStatesCompanion.insert(
+                id: id,
+                taskId: taskId,
+                focus: focus,
+                remainingMs: remainingMs,
+                running: running,
+                anchorMs: anchorMs,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PomodoroStatesTable, PomodoroStateRow>(table),
+                  BaseReferences<
+                    _$TasDatabase,
+                    $PomodoroStatesTable,
+                    PomodoroStateRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PomodoroStatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$TasDatabase,
+      $PomodoroStatesTable,
+      PomodoroStateRow,
+      $$PomodoroStatesTableFilterComposer,
+      $$PomodoroStatesTableOrderingComposer,
+      $$PomodoroStatesTableAnnotationComposer,
+      $$PomodoroStatesTableCreateCompanionBuilder,
+      $$PomodoroStatesTableUpdateCompanionBuilder,
+      (
+        PomodoroStateRow,
+        BaseReferences<_$TasDatabase, $PomodoroStatesTable, PomodoroStateRow>,
+      ),
+      PomodoroStateRow,
+      PrefetchHooks Function()
+    >;
 
 class $TasDatabaseManager {
   final _$TasDatabase _db;
@@ -6288,4 +9103,16 @@ class $TasDatabaseManager {
       $$OutboxOpsTableTableManager(_db, _db.outboxOps);
   $$SettingEntriesTableTableManager get settingEntries =>
       $$SettingEntriesTableTableManager(_db, _db.settingEntries);
+  $$TaskPlacementsTableTableManager get taskPlacements =>
+      $$TaskPlacementsTableTableManager(_db, _db.taskPlacements);
+  $$HabitsTableTableManager get habits =>
+      $$HabitsTableTableManager(_db, _db.habits);
+  $$HabitChecksTableTableManager get habitChecks =>
+      $$HabitChecksTableTableManager(_db, _db.habitChecks);
+  $$DiaryEntriesTableTableManager get diaryEntries =>
+      $$DiaryEntriesTableTableManager(_db, _db.diaryEntries);
+  $$PomodoroSessionsTableTableManager get pomodoroSessions =>
+      $$PomodoroSessionsTableTableManager(_db, _db.pomodoroSessions);
+  $$PomodoroStatesTableTableManager get pomodoroStates =>
+      $$PomodoroStatesTableTableManager(_db, _db.pomodoroStates);
 }

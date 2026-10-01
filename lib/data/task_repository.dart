@@ -12,6 +12,7 @@ import '../domain/models.dart';
 import '../domain/recurrence.dart';
 import '../sync/protocol.dart';
 import '../sync/sync_client.dart';
+import 'local_tools.dart';
 import 'tas_database.dart';
 
 class _Mutex {
@@ -40,7 +41,10 @@ class TaskRepository extends ChangeNotifier {
        _now = now ?? DateTime.now,
        _sync = syncClient ?? SyncClient() {
     _clock = HlcClock(_deviceOverride ?? 'boot', now: _now);
+    tools = LocalTools(db, now: _now, onChanged: notifyListeners);
   }
+
+  late final LocalTools tools;
 
   final TasDatabase db;
   final String? _deviceOverride;
@@ -142,6 +146,7 @@ class TaskRepository extends ChangeNotifier {
         await _saveClock();
       });
       await _reload();
+      await tools.load();
       ready = true;
       if (syncBaseUrl.isEmpty) {
         syncMessage = '同期先は未設定です。データはこの端末に保存されます。';
@@ -181,6 +186,30 @@ class TaskRepository extends ChangeNotifier {
         hasTime: hasTime && due != null,
       );
     });
+  }
+
+  Future<String> createTask({
+    required String title,
+    required String listId,
+    String notes = '',
+    DateTime? due,
+    bool hasTime = false,
+    int priority = 0,
+  }) {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) {
+      return Future.error(const FormatException('タスク名を入力してください。'));
+    }
+    return _commit(
+      () => _insertTask(
+        listId: listId,
+        title: trimmed,
+        notes: notes.trim(),
+        due: due,
+        hasTime: hasTime && due != null,
+        priority: priority,
+      ),
+    );
   }
 
   Future<void> setTitle(String id, String title) {

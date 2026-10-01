@@ -8,10 +8,12 @@ import '../data/task_repository.dart';
 import '../domain/models.dart';
 import '../reminders/os_notifications.dart';
 import 'calendar_pane.dart';
+import 'create_task_page.dart';
 import 'detail_pane.dart';
 import 'list_pane.dart';
 import 'settings_pane.dart';
 import 'task_pane.dart';
+import 'tools_pane.dart';
 import 'widgets.dart';
 
 class NewTaskIntent extends Intent {
@@ -50,8 +52,8 @@ class _TasShellState extends State<TasShell> {
   String? _listId;
   String? _selectedId;
   String _query = '';
-  int _tab = 0;
-  bool _drilled = false;
+  String? _desktopTool;
+  final List<_Place> _stack = [const _Place.listRoot()];
   late DateTime _month;
   late DateTime _day;
   final _quickAdd = FocusNode();
@@ -80,7 +82,10 @@ class _TasShellState extends State<TasShell> {
     }
     final repo = RepoScope.of(context);
     for (final task in repo.tasks) {
-      if (!task.deleted && !task.isCompleted && task.reminderAt != null && !task.reminderFired) {
+      if (!task.deleted &&
+          !task.isCompleted &&
+          task.reminderAt != null &&
+          !task.reminderFired) {
         await OsNotifications.instance.schedule(task);
       }
     }
@@ -88,7 +93,10 @@ class _TasShellState extends State<TasShell> {
     if (!mounted) {
       return;
     }
-    _reminderTimer = Timer.periodic(const Duration(seconds: 20), (_) => _poll());
+    _reminderTimer = Timer.periodic(
+      const Duration(seconds: 20),
+      (_) => _poll(),
+    );
     _syncTimer = Timer.periodic(const Duration(seconds: 45), (_) {
       if (mounted) {
         RepoScope.of(context).flushSync();
@@ -132,25 +140,47 @@ class _TasShellState extends State<TasShell> {
 
   void _selectSmart(TaskBoard board) {
     setState(() {
+      _desktopTool = null;
       _board = board;
       _listId = null;
-      _drilled = true;
-      _tab = switch (board) {
-        TaskBoard.today => 1,
-        TaskBoard.calendar => 2,
-        TaskBoard.search => 3,
-        _ => 0,
-      };
     });
   }
 
   void _selectList(String id) {
     setState(() {
+      _desktopTool = null;
       _board = TaskBoard.list;
       _listId = id;
-      _drilled = true;
-      _tab = 0;
     });
+  }
+
+  void _go(_Place place) {
+    setState(() {
+      final top = _stack.last;
+      if (top == place) {
+        return;
+      }
+      _stack.add(place);
+    });
+  }
+
+  void _popInApp() {
+    if (_stack.length <= 1) {
+      return;
+    }
+    setState(() => _stack.removeLast());
+  }
+
+  void _openCreate(bool desktop) {
+    final place = _stack.last;
+    final listId = desktop
+        ? (_board == TaskBoard.list ? _listId : null)
+        : (place.board == TaskBoard.list ? place.listId : null);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => CreateTaskPage(listId: listId),
+      ),
+    );
   }
 
   void _openSettings(bool desktop) {
@@ -173,14 +203,28 @@ class _TasShellState extends State<TasShell> {
     if (desktop) {
       return;
     }
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (context) => DetailPane(taskId: id)));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (context) => DetailPane(taskId: id)),
+    );
   }
 
   List<TaskModel> _visible(TaskRepository repo) {
+    final place = _stack.last;
+    final mobile =
+        _stack.length > 1 ||
+        place.drilled ||
+        place.tool != null ||
+        place.tab != 0;
+    final board = !mobile
+        ? _board
+        : place.tool == 'search'
+        ? TaskBoard.search
+        : place.board;
+    final listId = mobile ? place.listId : _listId;
     return repo.tasksFor(
-      board: _board,
-      listId: _listId,
-      day: _board == TaskBoard.calendar ? _day : null,
+      board: board,
+      listId: listId,
+      day: board == TaskBoard.calendar ? _day : null,
       query: _query,
     );
   }
@@ -191,53 +235,101 @@ class _TasShellState extends State<TasShell> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final desktop = constraints.maxWidth >= _desktopWidth;
-        return Shortcuts(
-          shortcuts: const {
-            SingleActivator(LogicalKeyboardKey.keyN, control: true): NewTaskIntent(),
-            SingleActivator(LogicalKeyboardKey.keyF, control: true): SearchIntent(),
-            SingleActivator(LogicalKeyboardKey.enter, control: true): CompleteIntent(),
-            SingleActivator(LogicalKeyboardKey.keyJ): MoveIntent(1),
-            SingleActivator(LogicalKeyboardKey.keyK): MoveIntent(-1),
-            SingleActivator(LogicalKeyboardKey.arrowDown, control: true): MoveIntent(1),
-            SingleActivator(LogicalKeyboardKey.arrowUp, control: true): MoveIntent(-1),
-            SingleActivator(LogicalKeyboardKey.digit1, control: true): BoardIntent(TaskBoard.inbox),
-            SingleActivator(LogicalKeyboardKey.digit2, control: true): BoardIntent(TaskBoard.today),
-            SingleActivator(LogicalKeyboardKey.digit3, control: true): BoardIntent(TaskBoard.upcoming),
-            SingleActivator(LogicalKeyboardKey.digit4, control: true): BoardIntent(TaskBoard.calendar),
-            SingleActivator(LogicalKeyboardKey.digit5, control: true): BoardIntent(TaskBoard.completed),
-          },
-          child: Actions(
-            actions: {
-              NewTaskIntent: CallbackAction<NewTaskIntent>(onInvoke: (_) {
-                _focusNew(desktop);
-                return null;
-              }),
-              SearchIntent: CallbackAction<SearchIntent>(onInvoke: (_) {
-                _focusSearch(desktop);
-                return null;
-              }),
-              CompleteIntent: CallbackAction<CompleteIntent>(onInvoke: (_) {
-                _complete();
-                return null;
-              }),
-              MoveIntent: CallbackAction<MoveIntent>(onInvoke: (intent) {
-                _move(intent.delta, repo);
-                return null;
-              }),
-              BoardIntent: CallbackAction<BoardIntent>(onInvoke: (intent) {
-                _selectSmart(intent.board);
-                return null;
-              }),
-            },
-            child: Scaffold(
-              resizeToAvoidBottomInset: true,
-              body: Column(
-                children: [
-                  if (_notices.isNotEmpty) _banner(context, desktop),
-                  Expanded(child: desktop ? _desktop(repo) : _mobile(repo)),
-                ],
+        final inset = MediaQuery.paddingOf(context);
+        return ColoredBox(
+          color: Theme.of(context).colorScheme.surface,
+          child: MediaQuery.removePadding(
+            context: context,
+            removeTop: true,
+            removeBottom: true,
+            removeLeft: true,
+            removeRight: true,
+            child: Padding(
+              padding: inset,
+              child: PopScope(
+                canPop: desktop || _stack.length <= 1,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (!didPop) {
+                    _popInApp();
+                  }
+                },
+                child: Shortcuts(
+                  shortcuts: const {
+                    SingleActivator(LogicalKeyboardKey.keyN, control: true):
+                        NewTaskIntent(),
+                    SingleActivator(LogicalKeyboardKey.keyF, control: true):
+                        SearchIntent(),
+                    SingleActivator(LogicalKeyboardKey.enter, control: true):
+                        CompleteIntent(),
+                    SingleActivator(LogicalKeyboardKey.keyJ): MoveIntent(1),
+                    SingleActivator(LogicalKeyboardKey.keyK): MoveIntent(-1),
+                    SingleActivator(
+                      LogicalKeyboardKey.arrowDown,
+                      control: true,
+                    ): MoveIntent(
+                      1,
+                    ),
+                    SingleActivator(LogicalKeyboardKey.arrowUp, control: true):
+                        MoveIntent(-1),
+                    SingleActivator(LogicalKeyboardKey.digit1, control: true):
+                        BoardIntent(TaskBoard.inbox),
+                    SingleActivator(LogicalKeyboardKey.digit2, control: true):
+                        BoardIntent(TaskBoard.today),
+                    SingleActivator(LogicalKeyboardKey.digit3, control: true):
+                        BoardIntent(TaskBoard.upcoming),
+                    SingleActivator(LogicalKeyboardKey.digit4, control: true):
+                        BoardIntent(TaskBoard.calendar),
+                    SingleActivator(LogicalKeyboardKey.digit5, control: true):
+                        BoardIntent(TaskBoard.completed),
+                  },
+                  child: Actions(
+                    actions: {
+                      NewTaskIntent: CallbackAction<NewTaskIntent>(
+                        onInvoke: (_) {
+                          _focusNew(desktop);
+                          return null;
+                        },
+                      ),
+                      SearchIntent: CallbackAction<SearchIntent>(
+                        onInvoke: (_) {
+                          _focusSearch(desktop);
+                          return null;
+                        },
+                      ),
+                      CompleteIntent: CallbackAction<CompleteIntent>(
+                        onInvoke: (_) {
+                          _complete();
+                          return null;
+                        },
+                      ),
+                      MoveIntent: CallbackAction<MoveIntent>(
+                        onInvoke: (intent) {
+                          _move(intent.delta, repo);
+                          return null;
+                        },
+                      ),
+                      BoardIntent: CallbackAction<BoardIntent>(
+                        onInvoke: (intent) {
+                          _selectSmart(intent.board);
+                          return null;
+                        },
+                      ),
+                    },
+                    child: Scaffold(
+                      resizeToAvoidBottomInset: true,
+                      body: Column(
+                        children: [
+                          if (_notices.isNotEmpty) _banner(context, desktop),
+                          Expanded(
+                            child: desktop ? _desktop(repo) : _mobile(repo),
+                          ),
+                        ],
+                      ),
+                      bottomNavigationBar: desktop ? null : _bottomNav(),
+                    ),
+                  ),
+                ),
               ),
-              bottomNavigationBar: desktop ? null : _bottomNav(),
             ),
           ),
         );
@@ -256,7 +348,13 @@ class _TasShellState extends State<TasShell> {
           children: [
             const Icon(Icons.notifications_active_outlined),
             const SizedBox(width: 8),
-            Expanded(child: Text('リマインダー: ${notice.title}', maxLines: 1, overflow: TextOverflow.ellipsis)),
+            Expanded(
+              child: Text(
+                'リマインダー: ${notice.title}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             TextButton(
               onPressed: () {
                 setState(() => _notices.removeAt(0));
@@ -264,7 +362,10 @@ class _TasShellState extends State<TasShell> {
               },
               child: const Text('開く'),
             ),
-            TextButton(onPressed: () => setState(() => _notices.removeAt(0)), child: const Text('閉じる')),
+            TextButton(
+              onPressed: () => setState(() => _notices.removeAt(0)),
+              child: const Text('閉じる'),
+            ),
           ],
         ),
       ),
@@ -272,7 +373,26 @@ class _TasShellState extends State<TasShell> {
   }
 
   Widget _desktop(TaskRepository repo) {
-    final center = _board == TaskBoard.settings
+    final Widget center = _desktopTool != null
+        ? Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _desktopTool = null),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('戻る'),
+                ),
+              ),
+              Expanded(
+                child: ToolPage(
+                  id: _desktopTool!,
+                  onOpenTask: (id) => _openTask(id, desktop: true),
+                ),
+              ),
+            ],
+          )
+        : _board == TaskBoard.settings
         ? const SettingsPane()
         : _board == TaskBoard.calendar
         ? CalendarPane(
@@ -281,7 +401,8 @@ class _TasShellState extends State<TasShell> {
             selectedId: _selectedId,
             query: _query,
             searchController: _searchController,
-            onMonth: (value) => setState(() => _month = DateTime(value.year, value.month)),
+            onMonth: (value) =>
+                setState(() => _month = DateTime(value.year, value.month)),
             onDay: (value) => setState(() {
               _day = value;
               _month = DateTime(value.year, value.month);
@@ -305,6 +426,7 @@ class _TasShellState extends State<TasShell> {
             onQuery: (value) => setState(() => _query = value),
             searchFocus: _search,
             quickAddFocus: _quickAdd,
+            onCreate: () => _openCreate(true),
           );
     return Row(
       children: [
@@ -317,6 +439,18 @@ class _TasShellState extends State<TasShell> {
             onSmart: _selectSmart,
             onList: _selectList,
             onSettings: () => _openSettings(true),
+            onCreateTask: () => _openCreate(true),
+            onTool: (id) {
+              if (id == 'search') {
+                setState(() {
+                  _desktopTool = null;
+                  _board = TaskBoard.search;
+                  _listId = null;
+                });
+                return;
+              }
+              setState(() => _desktopTool = id);
+            },
           ),
         ),
         const VerticalDivider(width: 1),
@@ -327,8 +461,15 @@ class _TasShellState extends State<TasShell> {
             key: const Key('pane-detail'),
             width: 420,
             child: _selectedId == null
-                ? const EmptyHint(message: 'タスクを選ぶと、メモや期限を編集できます。', icon: Icons.edit_outlined)
-                : DetailPane(key: ValueKey(_selectedId), taskId: _selectedId!, embedded: true),
+                ? const EmptyHint(
+                    message: 'タスクを選ぶと、メモや期限を編集できます。',
+                    icon: Icons.edit_outlined,
+                  )
+                : DetailPane(
+                    key: ValueKey(_selectedId),
+                    taskId: _selectedId!,
+                    embedded: true,
+                  ),
           ),
         ],
       ],
@@ -336,55 +477,97 @@ class _TasShellState extends State<TasShell> {
   }
 
   Widget _mobile(TaskRepository repo) {
-    if (_tab == 0 && !_drilled) {
-      return ListPane(
-        board: _board,
-        listId: _listId,
-        navKeys: false,
-        onSmart: _selectSmart,
-        onList: _selectList,
-        onSettings: () => _openSettings(false),
-      );
-    }
-    if (_tab == 2 || _board == TaskBoard.calendar && _tab != 1 && _tab != 3) {
-      return CalendarPane(
-        month: _month,
-        day: _day,
-        selectedId: _selectedId,
-        query: _query,
-        searchController: _searchController,
-        onMonth: (value) => setState(() => _month = DateTime(value.year, value.month)),
-        onDay: (value) => setState(() {
-          _day = value;
-          _month = DateTime(value.year, value.month);
-        }),
-        onOpen: (id) => _openTask(id, desktop: false),
-        onSelect: (id) => setState(() => _selectedId = id),
-        quickAddFocus: _quickAdd,
-        searchFocus: _search,
-        onQuery: (value) => setState(() => _query = value),
-      );
-    }
-    final board = _tab == 1
-        ? TaskBoard.today
-        : _tab == 3
-        ? TaskBoard.search
-        : _board;
-    return Column(
-      children: [
-        if (_tab == 0 && _drilled)
-          Align(
+    final place = _stack.last;
+    final back = _stack.length > 1
+        ? Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: () => setState(() => _drilled = false),
+              key: const Key('back-in-app'),
+              onPressed: _popInApp,
               icon: const Icon(Icons.arrow_back),
-              label: const Text('リストへ戻る'),
+              label: Text(_stack[_stack.length - 2].tab == 0 ? 'リストへ戻る' : '戻る'),
+            ),
+          )
+        : null;
+    if (place.tool == 'menu') {
+      return Column(
+        children: [
+          ?back,
+          Expanded(
+            child: ToolsMenu(
+              onOpen: (id) => _go(
+                id == 'search' ? const _Place.tool('search') : _Place.tool(id),
+              ),
             ),
           ),
+        ],
+      );
+    }
+    if (place.tool != null && place.tool != 'search') {
+      return Column(
+        children: [
+          ?back,
+          Expanded(
+            child: ToolPage(
+              id: place.tool!,
+              onOpenTask: (id) => _openTask(id, desktop: false),
+            ),
+          ),
+        ],
+      );
+    }
+    if (place.tab == 0 && !place.drilled) {
+      return Column(
+        children: [
+          ?back,
+          Expanded(
+            child: ListPane(
+              board: place.board,
+              listId: place.listId,
+              navKeys: false,
+              onSmart: (board) => _go(_Place.smart(board)),
+              onList: (id) => _go(_Place.userList(id)),
+              onSettings: () => _openSettings(false),
+              onCreateTask: () => _openCreate(false),
+            ),
+          ),
+        ],
+      );
+    }
+    if (place.board == TaskBoard.calendar) {
+      return Column(
+        children: [
+          ?back,
+          Expanded(
+            child: CalendarPane(
+              month: _month,
+              day: _day,
+              selectedId: _selectedId,
+              query: _query,
+              searchController: _searchController,
+              onMonth: (value) =>
+                  setState(() => _month = DateTime(value.year, value.month)),
+              onDay: (value) => setState(() {
+                _day = value;
+                _month = DateTime(value.year, value.month);
+              }),
+              onOpen: (id) => _openTask(id, desktop: false),
+              onSelect: (id) => setState(() => _selectedId = id),
+              quickAddFocus: _quickAdd,
+              searchFocus: _search,
+              onQuery: (value) => setState(() => _query = value),
+            ),
+          ),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        ?back,
         Expanded(
           child: TaskPane(
-            board: board,
-            listId: _listId,
+            board: place.tool == 'search' ? TaskBoard.search : place.board,
+            listId: place.listId,
             selectedId: _selectedId,
             query: _query,
             day: _day,
@@ -395,6 +578,7 @@ class _TasShellState extends State<TasShell> {
             onQuery: (value) => setState(() => _query = value),
             searchFocus: _search,
             quickAddFocus: _quickAdd,
+            onCreate: () => _openCreate(false),
           ),
         ),
       ],
@@ -403,45 +587,68 @@ class _TasShellState extends State<TasShell> {
 
   Widget _bottomNav() {
     return NavigationBar(
-      selectedIndex: _tab,
+      selectedIndex: _stack.last.tab,
       onDestinationSelected: (index) {
-        setState(() {
-          _tab = index;
-          _board = switch (index) {
-            1 => TaskBoard.today,
-            2 => TaskBoard.calendar,
-            3 => TaskBoard.search,
-            _ => _drilled ? _board : TaskBoard.inbox,
-          };
+        _go(switch (index) {
+          1 => const _Place.today(),
+          2 => const _Place.calendar(),
+          3 => const _Place.tools(),
+          _ => const _Place.listRoot(),
         });
       },
       destinations: const [
-        NavigationDestination(icon: Icon(Icons.list_alt_outlined), label: 'リスト'),
-        NavigationDestination(icon: Icon(Icons.today_outlined, key: Key('nav-today')), label: '今日'),
-        NavigationDestination(icon: Icon(Icons.calendar_month_outlined, key: Key('nav-calendar')), label: 'カレンダー'),
-        NavigationDestination(icon: Icon(Icons.search, key: Key('nav-search')), label: '検索'),
+        NavigationDestination(
+          icon: Icon(Icons.list_alt_outlined),
+          label: 'リスト',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.today_outlined, key: Key('nav-today')),
+          label: '今日',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.calendar_month_outlined, key: Key('nav-calendar')),
+          label: 'カレンダー',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.grid_view_outlined, key: Key('nav-tools')),
+          label: 'ツール',
+        ),
       ],
     );
   }
 
   void _focusNew(bool desktop) {
-    if (_board == TaskBoard.settings || (!desktop && _tab == 0 && !_drilled)) {
+    if (!desktop &&
+        (_stack.last.tool != null ||
+            (_stack.last.tab == 0 && !_stack.last.drilled))) {
+      _go(
+        const _Place(
+          tab: 0,
+          board: TaskBoard.inbox,
+          listId: null,
+          drilled: true,
+          tool: null,
+        ),
+      );
+    } else if (desktop &&
+        (_board == TaskBoard.settings || _desktopTool != null)) {
       setState(() {
+        _desktopTool = null;
         _board = TaskBoard.inbox;
-        _tab = 0;
-        _drilled = true;
       });
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _quickAdd.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _quickAdd.requestFocus(),
+    );
   }
 
   void _focusSearch(bool desktop) {
-    final menu = !desktop && _tab == 0 && !_drilled;
-    if (_board == TaskBoard.settings || menu) {
+    if (!desktop) {
+      _go(const _Place.tool('search'));
+    } else if (_board == TaskBoard.settings || _desktopTool != null) {
       setState(() {
+        _desktopTool = null;
         _board = TaskBoard.search;
-        _tab = 3;
-        _drilled = false;
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _search.requestFocus());
@@ -468,4 +675,88 @@ class _TasShellState extends State<TasShell> {
     final next = (index < 0 ? 0 : index + delta).clamp(0, tasks.length - 1);
     setState(() => _selectedId = tasks[next].id);
   }
+}
+
+class _Place {
+  const _Place({
+    required this.tab,
+    required this.board,
+    required this.listId,
+    required this.drilled,
+    required this.tool,
+  });
+
+  const _Place.listRoot()
+    : tab = 0,
+      board = TaskBoard.inbox,
+      listId = null,
+      drilled = false,
+      tool = null;
+
+  const _Place.today()
+    : tab = 1,
+      board = TaskBoard.today,
+      listId = null,
+      drilled = true,
+      tool = null;
+
+  const _Place.calendar()
+    : tab = 2,
+      board = TaskBoard.calendar,
+      listId = null,
+      drilled = true,
+      tool = null;
+
+  const _Place.tools()
+    : tab = 3,
+      board = TaskBoard.inbox,
+      listId = null,
+      drilled = false,
+      tool = 'menu';
+
+  const _Place.userList(this.listId)
+    : tab = 0,
+      board = TaskBoard.list,
+      drilled = true,
+      tool = null;
+
+  const _Place.tool(this.tool)
+    : tab = 3,
+      board = TaskBoard.inbox,
+      listId = null,
+      drilled = false;
+
+  factory _Place.smart(TaskBoard board) {
+    return switch (board) {
+      TaskBoard.today => const _Place.today(),
+      TaskBoard.calendar => const _Place.calendar(),
+      TaskBoard.search => const _Place.tool('search'),
+      _ => _Place(
+        tab: 0,
+        board: board,
+        listId: null,
+        drilled: true,
+        tool: null,
+      ),
+    };
+  }
+
+  final int tab;
+  final TaskBoard board;
+  final String? listId;
+  final bool drilled;
+  final String? tool;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _Place &&
+        other.tab == tab &&
+        other.board == board &&
+        other.listId == listId &&
+        other.drilled == drilled &&
+        other.tool == tool;
+  }
+
+  @override
+  int get hashCode => Object.hash(tab, board, listId, drilled, tool);
 }

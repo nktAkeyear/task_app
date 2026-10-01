@@ -137,6 +137,84 @@ class SettingEntries extends Table {
   Set<Column<Object>> get primaryKey => {settingKey};
 }
 
+@DataClassName('TaskPlacementRow')
+class TaskPlacements extends Table {
+  @override
+  String get tableName => 'task_placements';
+
+  TextColumn get taskId => text()();
+  IntColumn get quadrant => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {taskId};
+}
+
+@DataClassName('HabitRow')
+class Habits extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+  IntColumn get createdAt => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('HabitCheckRow')
+class HabitChecks extends Table {
+  @override
+  String get tableName => 'habit_checks';
+
+  TextColumn get habitId => text()();
+  TextColumn get day => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {habitId, day};
+}
+
+@DataClassName('DiaryRow')
+class DiaryEntries extends Table {
+  @override
+  String get tableName => 'diary_entries';
+
+  TextColumn get day => text()();
+  TextColumn get body => text().withDefault(const Constant(''))();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {day};
+}
+
+@DataClassName('PomodoroSessionRow')
+class PomodoroSessions extends Table {
+  @override
+  String get tableName => 'pomodoro_sessions';
+
+  TextColumn get id => text()();
+  TextColumn get taskId => text().nullable()();
+  IntColumn get finishedAt => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('PomodoroStateRow')
+class PomodoroStates extends Table {
+  @override
+  String get tableName => 'pomodoro_state';
+
+  IntColumn get id => integer()();
+  TextColumn get taskId => text().nullable()();
+  BoolColumn get focus => boolean().withDefault(const Constant(true))();
+  IntColumn get remainingMs => integer()();
+  BoolColumn get running => boolean().withDefault(const Constant(false))();
+  IntColumn get anchorMs => integer().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     TaskLists,
@@ -146,6 +224,12 @@ class SettingEntries extends Table {
     ChecklistItems,
     OutboxOps,
     SettingEntries,
+    TaskPlacements,
+    Habits,
+    HabitChecks,
+    DiaryEntries,
+    PomodoroSessions,
+    PomodoroStates,
   ],
 )
 class TasDatabase extends _$TasDatabase {
@@ -173,7 +257,7 @@ class TasDatabase extends _$TasDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -184,6 +268,14 @@ class TasDatabase extends _$TasDatabase {
         await migrator.addColumn(tags, tags.restoredHlc);
         await migrator.addColumn(taskTags, taskTags.restoredHlc);
         await migrator.addColumn(checklistItems, checklistItems.restoredHlc);
+      }
+      if (from < 3) {
+        await migrator.createTable(taskPlacements);
+        await migrator.createTable(habits);
+        await migrator.createTable(habitChecks);
+        await migrator.createTable(diaryEntries);
+        await migrator.createTable(pomodoroSessions);
+        await migrator.createTable(pomodoroStates);
       }
     },
   );

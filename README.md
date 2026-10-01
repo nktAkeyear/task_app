@@ -11,6 +11,9 @@ The interface is Japanese. Code, identifiers, and this README are English.
 - Task detail: notes, due date and time, four priority levels, tags, checklist, recurrence (毎日 / 毎週 / 毎月 / 平日), reminder.
 - Reorder, complete with undo, swipe on narrow layouts, desktop keyboard shortcuts.
 - Search across title and notes.
+- Create form (title, notes, due date and time, priority, list). Quick add still parses a title; the + action opens the form.
+- Phone back follows the in-app stack (lists, today, calendar, tools, and the create form) and leaves the app only when that stack is empty.
+- Offline tools, kept off the main three tabs: ポモドーロ (25/5, optional task, finished-session count), Eisenhower matrix (重要×緊急), daily habits with a streak, and one diary entry per day. They live in the same SQLite file and are not part of sync.
 - Light, dark, and system themes.
 - In-app reminders. OS local notifications are attempted on Android and Windows when the plugin initializes.
 - JSON export and import for a local backup.

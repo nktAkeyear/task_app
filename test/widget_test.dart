@@ -10,7 +10,10 @@ void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
   testWidgets('quick add parses 今日 and shows the task on 今日', (tester) async {
-    final repo = TaskRepository(TasDatabase.memory(), now: () => DateTime(2026, 10, 1, 9));
+    final repo = TaskRepository(
+      TasDatabase.memory(),
+      now: () => DateTime(2026, 10, 1, 9),
+    );
     await repo.init();
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -24,7 +27,10 @@ void main() {
     await tester.pump();
     expect(find.text('今日のタスクはありません。'), findsOneWidget);
 
-    await tester.enterText(find.byKey(const Key('quick-add-field')), '資料を送る 今日');
+    await tester.enterText(
+      find.byKey(const Key('quick-add-field')),
+      '資料を送る 今日',
+    );
     await tester.tap(find.byKey(const Key('quick-add-submit')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -45,7 +51,10 @@ void main() {
   });
 
   testWidgets('desktop shows three panes', (tester) async {
-    final repo = TaskRepository(TasDatabase.memory(), now: () => DateTime(2026, 10, 1, 9));
+    final repo = TaskRepository(
+      TasDatabase.memory(),
+      now: () => DateTime(2026, 10, 1, 9),
+    );
     await repo.init();
     tester.view.physicalSize = const Size(1400, 900);
     tester.view.devicePixelRatio = 1;
@@ -64,5 +73,128 @@ void main() {
     await tester.tap(find.byKey(const Key('quick-add-submit')));
     await tester.pump();
     expect(find.text('机を片付ける'), findsWidgets);
+    expect(tester.getTopLeft(find.byKey(const Key('pane-lists'))).dy, 0);
+  });
+
+  testWidgets('status bar inset keeps the header below the clock', (
+    tester,
+  ) async {
+    final repo = TaskRepository(
+      TasDatabase.memory(),
+      now: () => DateTime(2026, 10, 1, 9),
+    );
+    await repo.init();
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 48, bottom: 24);
+    tester.view.viewPadding = const FakeViewPadding(top: 48, bottom: 24);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+
+    await tester.pumpWidget(TasApp(repository: repo));
+    await tester.pump();
+
+    expect(tester.getTopLeft(find.text('Tas')).dy, greaterThanOrEqualTo(48));
+    expect(
+      tester.getBottomLeft(find.byType(NavigationBar)).dy,
+      lessThanOrEqualTo(844 - 24),
+    );
+  });
+
+  testWidgets('phone back returns to the list and closes the create form', (
+    tester,
+  ) async {
+    final repo = TaskRepository(
+      TasDatabase.memory(),
+      now: () => DateTime(2026, 10, 1, 9),
+    );
+    await repo.init();
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(TasApp(repository: repo));
+    await tester.pump();
+
+    await tester.tap(find.text('受信箱').first);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('nav-today')));
+    await tester.pump();
+    expect(find.text('リストへ戻る'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.text('リストへ戻る'), findsOneWidget);
+    expect(find.text('受信箱'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('create-task')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('タスクを作成'), findsOneWidget);
+    expect(find.byKey(const Key('create-title')), findsOneWidget);
+    expect(find.byKey(const Key('create-notes')), findsOneWidget);
+    expect(find.text('優先度'), findsOneWidget);
+    expect(find.text('リスト'), findsWidgets);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('タスクを作成'), findsNothing);
+    expect(find.text('受信箱'), findsWidgets);
+  });
+
+  testWidgets('tools keep habits, the matrix, and the diary offline', (
+    tester,
+  ) async {
+    final repo = TaskRepository(
+      TasDatabase.memory(),
+      now: () => DateTime(2026, 10, 1, 9),
+    );
+    await repo.init();
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(TasApp(repository: repo));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('nav-tools')));
+    await tester.pump();
+    expect(find.text('ポモドーロ'), findsOneWidget);
+    expect(find.text('マトリックス'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('tool-habits')));
+    await tester.pump();
+    expect(find.text('習慣はまだありません。'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '水を飲む');
+    await tester.tap(find.text('追加'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('水を飲む'), findsOneWidget);
+    expect(find.text('連続 0 日'), findsOneWidget);
+
+    await tester.tap(find.text('戻る'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tool-matrix')));
+    await tester.pump();
+    expect(find.text('この区分のタスクはありません。'), findsWidgets);
+
+    await tester.tap(find.text('戻る'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tool-diary')));
+    await tester.pump();
+    expect(find.text('この日の日記はまだありません。'), findsOneWidget);
+    expect(find.byKey(const Key('diary-date')), findsOneWidget);
+
+    await tester.tap(find.text('戻る'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tool-pomodoro')));
+    await tester.pump();
+    expect(find.text('25:00'), findsOneWidget);
+    expect(find.text('開始'), findsOneWidget);
   });
 }

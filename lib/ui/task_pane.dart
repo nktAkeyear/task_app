@@ -19,6 +19,7 @@ class TaskPane extends StatelessWidget {
     required this.searchFocus,
     required this.quickAddFocus,
     required this.showSearch,
+    this.onCreate,
     this.showTitle = true,
     super.key,
   });
@@ -35,6 +36,7 @@ class TaskPane extends StatelessWidget {
   final FocusNode searchFocus;
   final FocusNode quickAddFocus;
   final bool showSearch;
+  final VoidCallback? onCreate;
   final bool showTitle;
 
   @override
@@ -52,8 +54,21 @@ class TaskPane extends StatelessWidget {
       children: [
         if (showTitle)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-            child: Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+            padding: const EdgeInsets.fromLTRB(20, 16, 4, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                ),
+                if (onCreate != null)
+                  IconButton(
+                    key: const Key('create-task'),
+                    tooltip: 'タスクを作成',
+                    onPressed: onCreate,
+                    icon: const Icon(Icons.add),
+                  ),
+              ],
+            ),
           ),
         if (showSearch)
           Padding(
