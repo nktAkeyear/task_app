@@ -140,7 +140,10 @@ class _DetailPaneState extends State<DetailPane> {
             for (final list in lists)
               DropdownMenuItem(
                 value: list.id,
-                child: Text(list.name, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  copy.listTitle(list),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
           ],
           onChanged: (value) {
@@ -384,7 +387,6 @@ class _DetailPaneState extends State<DetailPane> {
       initialDate: task.dueAt ?? now,
       firstDate: DateTime(now.year - 5),
       lastDate: DateTime(now.year + 10),
-      locale: const Locale('ja'),
     );
     if (picked == null || !mounted) {
       return;

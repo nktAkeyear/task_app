@@ -294,12 +294,13 @@ class _SettingsPaneState extends State<SettingsPane> {
   }
 
   Future<void> _exportFile(TaskRepository repo) async {
+    final copy = Copy.of(context);
     try {
       final json = await repo.exportJson();
       final saved = await FilePicker.saveFile(
         fileName: 'tas-backup.json',
         bytes: Uint8List.fromList(utf8.encode(json)),
-        dialogTitle: 'バックアップを書き出す',
+        dialogTitle: copy.exportDialog,
       );
       if (!mounted) {
         return;
@@ -328,7 +329,9 @@ class _SettingsPaneState extends State<SettingsPane> {
 
   Future<void> _importFile(TaskRepository repo) async {
     try {
-      final picked = await FilePicker.pickFile(dialogTitle: 'バックアップを読み込む');
+      final picked = await FilePicker.pickFile(
+        dialogTitle: Copy.of(context).importDialog,
+      );
       if (picked == null) {
         return;
       }

@@ -285,7 +285,7 @@ void showUndoSnack(
 String taskSubtitle({
   required BuildContext context,
   required TaskModel task,
-  required String? listName,
+  required ListModel? list,
   required List<TagModel> tags,
   required int checklistDone,
   required int checklistTotal,
@@ -300,8 +300,8 @@ String taskSubtitle({
   if (task.priority > 0) {
     parts.add(copy.priority(task.priority));
   }
-  if (showList && listName != null) {
-    parts.add(listName);
+  if (showList && list != null) {
+    parts.add(copy.listTitle(list));
   }
   if (tags.isNotEmpty) {
     parts.add(tags.map((tag) => tag.name).join(' · '));

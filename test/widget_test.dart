@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tas/app.dart';
 import 'package:tas/data/tas_database.dart';
 import 'package:tas/data/task_repository.dart';
+import 'package:tas/domain/models.dart';
+import 'package:tas/l10n/copy.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -243,5 +245,84 @@ void main() {
     await tester.pump();
     expect(find.text('25:00'), findsOneWidget);
     expect(find.text('開始'), findsOneWidget);
+  });
+
+  test('inbox and backup dialog titles follow the language', () {
+    final inbox = ListModel(
+      id: inboxId,
+      name: '受信箱',
+      color: 0,
+      sortOrder: 0,
+      isInbox: true,
+      archived: false,
+      deleted: false,
+      createdAt: DateTime.utc(2026),
+      updatedAt: DateTime.utc(2026),
+    );
+    final named = ListModel(
+      id: 'work',
+      name: '仕事',
+      color: 0,
+      sortOrder: 1,
+      isInbox: false,
+      archived: false,
+      deleted: false,
+      createdAt: DateTime.utc(2026),
+      updatedAt: DateTime.utc(2026),
+    );
+    expect(const Copy('ja').listTitle(inbox), '受信箱');
+    expect(const Copy('en').listTitle(inbox), 'Inbox');
+    expect(const Copy('ko').listTitle(inbox), '받은편지함');
+    expect(const Copy('en').listTitle(named), '仕事');
+    expect(const Copy('ja').exportDialog, 'バックアップを書き出す');
+    expect(const Copy('en').exportDialog, 'Export backup');
+    expect(const Copy('ko').exportDialog, '백업 내보내기');
+    expect(const Copy('ja').importDialog, 'バックアップを読み込む');
+    expect(const Copy('en').importDialog, 'Import backup');
+    expect(const Copy('ko').importDialog, '백업 가져오기');
+  });
+
+  testWidgets('English inbox label and calendar follow the app language', (
+    tester,
+  ) async {
+    final repo = TaskRepository(
+      TasDatabase.memory(),
+      now: () => DateTime(2026, 10, 1, 9),
+    );
+    await repo.init();
+    await repo.setLanguage('en');
+    await repo.createTask(
+      title: 'Read later',
+      listId: inboxId,
+      due: DateTime(2026, 10, 1),
+    );
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(TasApp(repository: repo));
+    await tester.pump();
+    expect(find.text('Today  ·  Inbox'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('create-task')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Inbox'), findsWidgets);
+    expect(find.text('受信箱'), findsNothing);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.text('Read later'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Inbox'), findsWidgets);
+
+    await tester.tap(find.byIcon(Icons.event_outlined));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('October 2026'), findsOneWidget);
   });
 }

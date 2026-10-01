@@ -203,7 +203,7 @@ class _Entry extends StatelessWidget {
       subtitle: taskSubtitle(
         context: context,
         task: task,
-        listName: repo.listById(task.listId)?.name,
+        list: repo.listById(task.listId),
         tags: repo.tagsFor(task.id),
         checklistDone: done,
         checklistTotal: items.length,

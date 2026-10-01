@@ -27,6 +27,13 @@ class Copy {
   String get tools => pick('ツール', 'Tools', '도구');
   String get settings => pick('設定', 'Settings', '설정');
   String get inbox => pick('受信箱', 'Inbox', '받은편지함');
+
+  String listTitle(ListModel list) {
+    if (list.isInbox || list.id == inboxId) {
+      return inbox;
+    }
+    return list.name;
+  }
   String get back => pick('戻る', 'Back', '뒤로');
   String get backToLists => pick('リストへ戻る', 'Back to lists', '목록으로');
   String get open => pick('開く', 'Open', '열기');
@@ -361,8 +368,12 @@ class Copy {
       pick('未送信の変更: $count', 'Unsent changes: $count', '보내지 않은 변경: $count건');
   String get backup => pick('バックアップ', 'Backup', '백업');
   String get exportFile => pick('ファイルに書き出す', 'Export file', '파일로 내보내기');
+  String get exportDialog =>
+      pick('バックアップを書き出す', 'Export backup', '백업 내보내기');
   String get copyJson => pick('JSON をコピー', 'Copy JSON', 'JSON 복사');
   String get importFile => pick('ファイルから読み込む', 'Import file', '파일에서 가져오기');
+  String get importDialog =>
+      pick('バックアップを読み込む', 'Import backup', '백업 가져오기');
   String get pasteJson => pick('JSON を貼り付け', 'Paste JSON', 'JSON 붙여넣기');
   String get keyboard => pick('キーボード', 'Keyboard', '키보드');
   String get shortcuts => pick(

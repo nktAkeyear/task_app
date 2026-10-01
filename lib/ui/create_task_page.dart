@@ -72,7 +72,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             initialValue: _listId,
             items: [
               for (final list in lists)
-                DropdownMenuItem(value: list.id, child: Text(list.name)),
+                DropdownMenuItem(
+                  value: list.id,
+                  child: Text(copy.listTitle(list)),
+                ),
             ],
             onChanged: (value) {
               if (value != null) {
