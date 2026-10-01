@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../domain/date_phrase.dart';
 import '../domain/models.dart';
 import '../l10n/copy.dart';
+import 'task_composer.dart';
 import 'widgets.dart';
 
 class TaskPane extends StatelessWidget {
@@ -13,7 +15,6 @@ class TaskPane extends StatelessWidget {
     required this.query,
     required this.day,
     required this.onOpen,
-    required this.onSelect,
     required this.onQuery,
     required this.searchController,
     required this.searchFocus,
@@ -30,7 +31,6 @@ class TaskPane extends StatelessWidget {
   final String query;
   final DateTime? day;
   final ValueChanged<String> onOpen;
-  final ValueChanged<String> onSelect;
   final ValueChanged<String> onQuery;
   final TextEditingController searchController;
   final FocusNode searchFocus;
@@ -152,13 +152,20 @@ class TaskPane extends StatelessWidget {
           QuickAddBar(
             focusNode: quickAddFocus,
             onSubmit: (raw) async {
-              final id = await repo.quickAdd(
-                raw,
-                board: board,
-                listId: listId,
-                day: day,
+              final parsed = parseQuickAdd(raw, now: DateTime.now());
+              if (parsed.title.trim().isEmpty) {
+                return;
+              }
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => TaskComposerPage(
+                    listId: board == TaskBoard.list ? listId : null,
+                    initialTitle: parsed.title,
+                    initialStart: parsed.due,
+                    initialHasTime: parsed.hasTime,
+                  ),
+                ),
               );
-              onSelect(id);
             },
           ),
       ],

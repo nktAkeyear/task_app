@@ -14,7 +14,6 @@ class CalendarPane extends StatelessWidget {
     required this.onMonth,
     required this.onDay,
     required this.onOpen,
-    required this.onSelect,
     required this.quickAddFocus,
     required this.searchFocus,
     required this.query,
@@ -29,7 +28,6 @@ class CalendarPane extends StatelessWidget {
   final ValueChanged<DateTime> onMonth;
   final ValueChanged<DateTime> onDay;
   final ValueChanged<String> onOpen;
-  final ValueChanged<String> onSelect;
   final FocusNode quickAddFocus;
   final FocusNode searchFocus;
   final String query;
@@ -178,7 +176,6 @@ class CalendarPane extends StatelessWidget {
             query: query,
             day: day,
             onOpen: onOpen,
-            onSelect: onSelect,
             onQuery: onQuery,
             searchController: searchController,
             searchFocus: searchFocus,

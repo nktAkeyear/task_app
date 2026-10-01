@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tas/app.dart';
 import 'package:tas/data/tas_database.dart';
 import 'package:tas/data/task_repository.dart';
+import 'package:tas/domain/filters.dart';
 import 'package:tas/domain/models.dart';
 import 'package:tas/l10n/copy.dart';
 
@@ -35,7 +36,28 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('quick-add-submit')));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('タスクを作成'), findsOneWidget);
+    expect(find.text('資料を送る'), findsWidgets);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('タスクを作成'), findsNothing);
+    expect(find.text('資料を送る'), findsNothing);
+    expect(find.text('今日のタスクはありません。'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('quick-add-field')),
+      '資料を送る 今日',
+    );
+    await tester.tap(find.byKey(const Key('quick-add-submit')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('create-save')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('タスクを作成'), findsNothing);
     expect(find.text('資料を送る'), findsWidgets);
 
     await tester.tap(find.text('リスト').first);
@@ -45,6 +67,10 @@ void main() {
     await tester.enterText(find.byKey(const Key('quick-add-field')), 'いつか読む');
     await tester.tap(find.byKey(const Key('quick-add-submit')));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('create-save')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
 
     await tester.tap(find.byKey(const Key('nav-today')));
     await tester.pump();
@@ -74,6 +100,11 @@ void main() {
     await tester.enterText(find.byKey(const Key('quick-add-field')), '机を片付ける');
     await tester.tap(find.byKey(const Key('quick-add-submit')));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const Key('create-title')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('create-save')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     expect(find.text('机を片付ける'), findsWidgets);
     expect(tester.getTopLeft(find.byKey(const Key('pane-lists'))).dy, 0);
   });
@@ -320,9 +351,84 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Inbox'), findsWidgets);
 
-    await tester.tap(find.byIcon(Icons.event_outlined));
+    await tester.tap(find.byKey(const Key('open-editor')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Edit task'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('composer-start-date')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('October 2026'), findsOneWidget);
   });
+
+  test('an empty end is one day and a set end covers the range', () {
+    final point = _task(due: DateTime(2026, 10, 2));
+    expect(coversDay(point, DateTime(2026, 10, 2)), isTrue);
+    expect(coversDay(point, DateTime(2026, 10, 3)), isFalse);
+
+    final range = _task(
+      due: DateTime(2026, 10, 1, 9),
+      ends: DateTime(2026, 10, 3, 18),
+      hasTime: true,
+    );
+    expect(coversDay(range, DateTime(2026, 9, 30)), isFalse);
+    expect(coversDay(range, DateTime(2026, 10, 1)), isTrue);
+    expect(coversDay(range, DateTime(2026, 10, 2)), isTrue);
+    expect(coversDay(range, DateTime(2026, 10, 3)), isTrue);
+    expect(coversDay(range, DateTime(2026, 10, 4)), isFalse);
+  });
+
+  testWidgets('all-day hides times until it is switched off', (tester) async {
+    final repo = TaskRepository(
+      TasDatabase.memory(),
+      now: () => DateTime(2026, 10, 1, 9),
+    );
+    await repo.init();
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(TasApp(repository: repo));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('create-task')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const Key('composer-start-time')), findsNothing);
+    expect(find.text('終了'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('composer-all-day')));
+    await tester.pump();
+    expect(find.byKey(const Key('composer-start-time')), findsOneWidget);
+    expect(find.byKey(const Key('composer-end-time')), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('create-title')), '範囲');
+    await tester.tap(find.byKey(const Key('create-save')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('範囲'), findsWidgets);
+    expect(repo.tasks.where((task) => task.title == '範囲'), isNotEmpty);
+  });
+}
+
+TaskModel _task({required DateTime due, DateTime? ends, bool hasTime = false}) {
+  return TaskModel(
+    id: 't',
+    listId: inboxId,
+    title: '予定',
+    notes: '',
+    dueAt: due,
+    dueHasTime: hasTime,
+    endsAt: ends,
+    priority: 0,
+    recurrence: 'none',
+    reminder: 'none',
+    reminderAt: null,
+    reminderFired: false,
+    sortOrder: 0,
+    completedAt: null,
+    deleted: false,
+    createdAt: DateTime.utc(2026),
+    updatedAt: DateTime.utc(2026),
+  );
 }

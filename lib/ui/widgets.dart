@@ -295,7 +295,14 @@ String taskSubtitle({
   final parts = <String>[];
   final copy = Copy.of(context);
   if (task.dueAt != null) {
-    parts.add(copy.due(task.dueAt!, hasTime: task.dueHasTime, now: now));
+    final start = copy.due(task.dueAt!, hasTime: task.dueHasTime, now: now);
+    final end = task.endsAt;
+    if (end != null) {
+      final finish = copy.due(end, hasTime: task.dueHasTime, now: now);
+      parts.add('$start – $finish');
+    } else {
+      parts.add(start);
+    }
   }
   if (task.priority > 0) {
     parts.add(copy.priority(task.priority));

@@ -234,7 +234,11 @@ class TaskRepository extends ChangeNotifier {
     String notes = '',
     DateTime? due,
     bool hasTime = false,
+    DateTime? endsAt,
     int priority = 0,
+    String recurrence = recurrenceNone,
+    String reminder = reminderNone,
+    List<String> tagIds = const [],
   }) {
     final trimmed = title.trim();
     if (trimmed.isEmpty) {
@@ -244,16 +248,87 @@ class TaskRepository extends ChangeNotifier {
         ),
       );
     }
-    return _commit(
-      () => _insertTask(
+    return _commit(() async {
+      final id = await _insertTask(
         listId: listId,
         title: trimmed,
         notes: notes.trim(),
         due: due,
         hasTime: hasTime && due != null,
+        endsAt: endsAt,
         priority: priority,
-      ),
-    );
+        recurrence: recurrence,
+        reminder: reminder,
+      );
+      for (final tagId in tagIds) {
+        await _insertTaskTag('$id:$tagId', id, tagId);
+      }
+      return id;
+    });
+  }
+
+  Future<void> saveTask({
+    required String id,
+    required String title,
+    required String listId,
+    required String notes,
+    DateTime? due,
+    required bool hasTime,
+    DateTime? endsAt,
+    required int priority,
+    required String recurrence,
+    required String reminder,
+    required List<String> tagIds,
+  }) {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) {
+      return Future.error(
+        FormatException(
+          tr('タスク名を入力してください。', 'Enter a task name.', '할 일 이름을 입력하세요.'),
+        ),
+      );
+    }
+    return _commit(() async {
+      await _writeTaskFields(id, {
+        'title': trimmed,
+        'notes': notes.trim(),
+        'listId': listId,
+        'dueAt': due?.millisecondsSinceEpoch,
+        'dueHasTime': due != null && hasTime,
+        'endsAt': endsAt?.millisecondsSinceEpoch,
+        'priority': priority.clamp(0, 3),
+        'recurrence': recurrence,
+        'reminder': reminder,
+      });
+      final links =
+          await (db.select(db.taskTags)..where(
+                (link) => link.taskId.equals(id),
+              ))
+              .get();
+      final live = <String>{};
+      for (final link in links) {
+        if (!_taskTagToEntity(link).isDeleted) {
+          live.add(link.tagId);
+        }
+      }
+      final wanted = tagIds.toSet();
+      for (final tagId in wanted.difference(live)) {
+        final linkId = '$id:$tagId';
+        final row = await _taskTag(linkId);
+        if (row == null) {
+          await _insertTaskTag(linkId, id, tagId);
+        } else if (_taskTagToEntity(row).isDeleted) {
+          await _restore(entityTaskTag, linkId);
+        }
+      }
+      for (final tagId in live.difference(wanted)) {
+        final linkId = '$id:$tagId';
+        final row = await _taskTag(linkId);
+        if (row != null && !_taskTagToEntity(row).isDeleted) {
+          await _tombstone(entityTaskTag, linkId, row);
+        }
+      }
+    });
   }
 
   Future<void> setTitle(String id, String title) {
@@ -337,10 +412,21 @@ class TaskRepository extends ChangeNotifier {
         );
         final previousDue = row.dueAt;
         final previousHasTime = row.dueHasTime;
+        final previousEnd = row.endsAt;
         final previousReminder = row.reminder;
+        final nextEnd = row.endsAt == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(row.endsAt!)
+                  .add(
+                    next.difference(
+                      DateTime.fromMillisecondsSinceEpoch(row.dueAt!),
+                    ),
+                  )
+                  .millisecondsSinceEpoch;
         await _writeTaskFields(id, {
           'dueAt': next.millisecondsSinceEpoch,
           'dueHasTime': row.dueHasTime,
+          'endsAt': nextEnd,
         });
         _undo = _Undo(
           () => _commit(() async {
@@ -348,6 +434,7 @@ class TaskRepository extends ChangeNotifier {
             await _writeTaskFields(id, {
               'dueAt': previousDue,
               'dueHasTime': previousHasTime,
+              'endsAt': previousEnd,
               'reminder': previousReminder,
             });
           }),
@@ -989,6 +1076,7 @@ class TaskRepository extends ChangeNotifier {
     String notes = '',
     DateTime? due,
     bool hasTime = false,
+    DateTime? endsAt,
     int priority = 0,
     String recurrence = recurrenceNone,
     String reminder = reminderNone,
@@ -1009,6 +1097,7 @@ class TaskRepository extends ChangeNotifier {
             ) +
             1024;
     final dueMs = due?.millisecondsSinceEpoch;
+    final endMs = endsAt?.millisecondsSinceEpoch;
     final remind = reminderInstant(
       due: due,
       dueHasTime: hasTime,
@@ -1020,6 +1109,7 @@ class TaskRepository extends ChangeNotifier {
       'notes': notes,
       'dueAt': dueMs,
       'dueHasTime': hasTime,
+      'endsAt': endMs,
       'priority': priority,
       'recurrence': recurrence,
       'reminder': reminder,
@@ -1037,6 +1127,7 @@ class TaskRepository extends ChangeNotifier {
             notes: Value(notes),
             dueAt: Value(dueMs),
             dueHasTime: Value(hasTime),
+            endsAt: Value(endMs),
             priority: Value(priority),
             recurrence: Value(recurrence),
             reminder: Value(reminder),
@@ -1065,6 +1156,9 @@ class TaskRepository extends ChangeNotifier {
           ? null
           : DateTime.fromMillisecondsSinceEpoch(row.dueAt!),
       hasTime: row.dueHasTime,
+      endsAt: row.endsAt == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(row.endsAt!),
       priority: row.priority,
       completedAt: _now().millisecondsSinceEpoch,
     );
@@ -1188,6 +1282,7 @@ class TaskRepository extends ChangeNotifier {
         notes: Value(values['notes'] as String? ?? ''),
         dueAt: Value(values['dueAt'] as int?),
         dueHasTime: Value(values['dueHasTime'] as bool? ?? false),
+        endsAt: Value(values['endsAt'] as int?),
         priority: Value(values['priority'] as int? ?? 0),
         recurrence: Value(values['recurrence'] as String? ?? recurrenceNone),
         reminder: Value(values['reminder'] as String? ?? reminderNone),
@@ -1498,6 +1593,11 @@ class TaskRepository extends ChangeNotifier {
                 dueHasTime: Value(
                   _bool(entity, 'dueHasTime', existing?.dueHasTime ?? false),
                 ),
+                endsAt: Value(
+                  entity.fields.containsKey('endsAt')
+                      ? _intOpt(entity, 'endsAt')
+                      : existing?.endsAt,
+                ),
                 priority: Value(
                   _int(entity, 'priority', existing?.priority ?? 0),
                 ),
@@ -1719,6 +1819,7 @@ Map<String, Object?> _taskValues(TaskRow row) => {
   'notes': row.notes,
   'dueAt': row.dueAt,
   'dueHasTime': row.dueHasTime,
+  'endsAt': row.endsAt,
   'priority': row.priority,
   'recurrence': row.recurrence,
   'reminder': row.reminder,
@@ -1864,6 +1965,9 @@ TaskModel _taskModel(TaskRow row) {
         ? null
         : DateTime.fromMillisecondsSinceEpoch(row.dueAt!),
     dueHasTime: row.dueHasTime,
+    endsAt: row.endsAt == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(row.endsAt!),
     priority: row.priority,
     recurrence: row.recurrence,
     reminder: row.reminder,

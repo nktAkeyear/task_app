@@ -7,11 +7,11 @@ The interface is Japanese. Code, identifiers, and this README are English.
 ## What it does
 
 - Smart lists: 受信箱, 今日, 近日 (7 days), カレンダー, 完了, plus user lists (color, sort, archive, delete).
-- Quick add with simple Japanese date phrases (今日, 明日, 来週, weekdays, times).
-- Task detail: notes, due date and time, four priority levels, tags, checklist, recurrence (毎日 / 毎週 / 毎月 / 平日), reminder.
+- Quick add with simple Japanese date phrases (今日, 明日, 来週, weekdays, times). It only prefills the composer; the task is stored when you save.
+- Task composer, shared by create and edit: title, all-day, start and end, repeat, reminder, list color, priority, tags, and a memo. An empty end is a single due point. The detail view uses the same rows and opens that editor.
 - Reorder, complete with undo, swipe on narrow layouts, desktop keyboard shortcuts.
 - Search across title and notes.
-- Create form (title, notes, due date and time, priority, list). Quick add still parses a title; the + action opens the form.
+- The + button and quick add both open the full-screen composer. Nothing is written until save.
 - Phone back follows the in-app stack (lists, today, calendar, tools, and the create form) and leaves the app only when that stack is empty.
 - Offline tools, kept off the main three tabs: ポモドーロ (focus, short break, and long break minutes, optional task, finished-session count, remaining time on other screens), Eisenhower matrix (重要×緊急), daily habits (check, streak, last 7 days, color, archive, optional reminder), and one diary entry per day. They live in the same SQLite file and are not part of sync.
 - Settings store the accent color, language (日本語, English, 한국어), home tab (default 今日), and pomodoro durations. On launch, and from settings, the app checks GitHub for a newer release when online and asks before downloading an APK.

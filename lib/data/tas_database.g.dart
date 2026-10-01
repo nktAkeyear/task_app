@@ -782,6 +782,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _endsAtMeta = const VerificationMeta('endsAt');
+  @override
+  late final GeneratedColumn<int> endsAt = GeneratedColumn<int>(
+    'ends_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _priorityMeta = const VerificationMeta(
     'priority',
   );
@@ -946,6 +955,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     notes,
     dueAt,
     dueHasTime,
+    endsAt,
     priority,
     recurrence,
     reminder,
@@ -1012,6 +1022,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
           data['due_has_time']!,
           _dueHasTimeMeta,
         ),
+      );
+    }
+    if (data.containsKey('ends_at')) {
+      context.handle(
+        _endsAtMeta,
+        endsAt.isAcceptableOrUnknown(data['ends_at']!, _endsAtMeta),
       );
     }
     if (data.containsKey('priority')) {
@@ -1141,6 +1157,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         DriftSqlType.bool,
         data['${effectivePrefix}due_has_time'],
       )!,
+      endsAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ends_at'],
+      ),
       priority: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}priority'],
@@ -1209,6 +1229,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
   final String notes;
   final int? dueAt;
   final bool dueHasTime;
+  final int? endsAt;
   final int priority;
   final String recurrence;
   final String reminder;
@@ -1229,6 +1250,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     required this.notes,
     this.dueAt,
     required this.dueHasTime,
+    this.endsAt,
     required this.priority,
     required this.recurrence,
     required this.reminder,
@@ -1254,6 +1276,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       map['due_at'] = Variable<int>(dueAt);
     }
     map['due_has_time'] = Variable<bool>(dueHasTime);
+    if (!nullToAbsent || endsAt != null) {
+      map['ends_at'] = Variable<int>(endsAt);
+    }
     map['priority'] = Variable<int>(priority);
     map['recurrence'] = Variable<String>(recurrence);
     map['reminder'] = Variable<String>(reminder);
@@ -1288,6 +1313,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           ? const Value.absent()
           : Value(dueAt),
       dueHasTime: Value(dueHasTime),
+      endsAt: endsAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endsAt),
       priority: Value(priority),
       recurrence: Value(recurrence),
       reminder: Value(reminder),
@@ -1324,6 +1352,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       notes: serializer.fromJson<String>(json['notes']),
       dueAt: serializer.fromJson<int?>(json['dueAt']),
       dueHasTime: serializer.fromJson<bool>(json['dueHasTime']),
+      endsAt: serializer.fromJson<int?>(json['endsAt']),
       priority: serializer.fromJson<int>(json['priority']),
       recurrence: serializer.fromJson<String>(json['recurrence']),
       reminder: serializer.fromJson<String>(json['reminder']),
@@ -1349,6 +1378,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       'notes': serializer.toJson<String>(notes),
       'dueAt': serializer.toJson<int?>(dueAt),
       'dueHasTime': serializer.toJson<bool>(dueHasTime),
+      'endsAt': serializer.toJson<int?>(endsAt),
       'priority': serializer.toJson<int>(priority),
       'recurrence': serializer.toJson<String>(recurrence),
       'reminder': serializer.toJson<String>(reminder),
@@ -1372,6 +1402,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     String? notes,
     Value<int?> dueAt = const Value.absent(),
     bool? dueHasTime,
+    Value<int?> endsAt = const Value.absent(),
     int? priority,
     String? recurrence,
     String? reminder,
@@ -1392,6 +1423,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     notes: notes ?? this.notes,
     dueAt: dueAt.present ? dueAt.value : this.dueAt,
     dueHasTime: dueHasTime ?? this.dueHasTime,
+    endsAt: endsAt.present ? endsAt.value : this.endsAt,
     priority: priority ?? this.priority,
     recurrence: recurrence ?? this.recurrence,
     reminder: reminder ?? this.reminder,
@@ -1416,6 +1448,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       dueHasTime: data.dueHasTime.present
           ? data.dueHasTime.value
           : this.dueHasTime,
+      endsAt: data.endsAt.present ? data.endsAt.value : this.endsAt,
       priority: data.priority.present ? data.priority.value : this.priority,
       recurrence: data.recurrence.present
           ? data.recurrence.value
@@ -1455,6 +1488,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           ..write('notes: $notes, ')
           ..write('dueAt: $dueAt, ')
           ..write('dueHasTime: $dueHasTime, ')
+          ..write('endsAt: $endsAt, ')
           ..write('priority: $priority, ')
           ..write('recurrence: $recurrence, ')
           ..write('reminder: $reminder, ')
@@ -1480,6 +1514,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     notes,
     dueAt,
     dueHasTime,
+    endsAt,
     priority,
     recurrence,
     reminder,
@@ -1504,6 +1539,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           other.notes == this.notes &&
           other.dueAt == this.dueAt &&
           other.dueHasTime == this.dueHasTime &&
+          other.endsAt == this.endsAt &&
           other.priority == this.priority &&
           other.recurrence == this.recurrence &&
           other.reminder == this.reminder &&
@@ -1526,6 +1562,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
   final Value<String> notes;
   final Value<int?> dueAt;
   final Value<bool> dueHasTime;
+  final Value<int?> endsAt;
   final Value<int> priority;
   final Value<String> recurrence;
   final Value<String> reminder;
@@ -1547,6 +1584,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.notes = const Value.absent(),
     this.dueAt = const Value.absent(),
     this.dueHasTime = const Value.absent(),
+    this.endsAt = const Value.absent(),
     this.priority = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.reminder = const Value.absent(),
@@ -1569,6 +1607,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.notes = const Value.absent(),
     this.dueAt = const Value.absent(),
     this.dueHasTime = const Value.absent(),
+    this.endsAt = const Value.absent(),
     this.priority = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.reminder = const Value.absent(),
@@ -1595,6 +1634,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Expression<String>? notes,
     Expression<int>? dueAt,
     Expression<bool>? dueHasTime,
+    Expression<int>? endsAt,
     Expression<int>? priority,
     Expression<String>? recurrence,
     Expression<String>? reminder,
@@ -1617,6 +1657,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       if (notes != null) 'notes': notes,
       if (dueAt != null) 'due_at': dueAt,
       if (dueHasTime != null) 'due_has_time': dueHasTime,
+      if (endsAt != null) 'ends_at': endsAt,
       if (priority != null) 'priority': priority,
       if (recurrence != null) 'recurrence': recurrence,
       if (reminder != null) 'reminder': reminder,
@@ -1641,6 +1682,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Value<String>? notes,
     Value<int?>? dueAt,
     Value<bool>? dueHasTime,
+    Value<int?>? endsAt,
     Value<int>? priority,
     Value<String>? recurrence,
     Value<String>? reminder,
@@ -1663,6 +1705,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       notes: notes ?? this.notes,
       dueAt: dueAt ?? this.dueAt,
       dueHasTime: dueHasTime ?? this.dueHasTime,
+      endsAt: endsAt ?? this.endsAt,
       priority: priority ?? this.priority,
       recurrence: recurrence ?? this.recurrence,
       reminder: reminder ?? this.reminder,
@@ -1700,6 +1743,9 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     }
     if (dueHasTime.present) {
       map['due_has_time'] = Variable<bool>(dueHasTime.value);
+    }
+    if (endsAt.present) {
+      map['ends_at'] = Variable<int>(endsAt.value);
     }
     if (priority.present) {
       map['priority'] = Variable<int>(priority.value);
@@ -1755,6 +1801,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
           ..write('notes: $notes, ')
           ..write('dueAt: $dueAt, ')
           ..write('dueHasTime: $dueHasTime, ')
+          ..write('endsAt: $endsAt, ')
           ..write('priority: $priority, ')
           ..write('recurrence: $recurrence, ')
           ..write('reminder: $reminder, ')
@@ -6460,6 +6507,7 @@ typedef $$TasksTableCreateCompanionBuilder = TasksCompanion Function({
   Value<String> notes,
   Value<int?> dueAt,
   Value<bool> dueHasTime,
+  Value<int?> endsAt,
   Value<int> priority,
   Value<String> recurrence,
   Value<String> reminder,
@@ -6482,6 +6530,7 @@ typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<String> notes,
   Value<int?> dueAt,
   Value<bool> dueHasTime,
+  Value<int?> endsAt,
   Value<int> priority,
   Value<String> recurrence,
   Value<String> reminder,
@@ -6533,6 +6582,11 @@ class $$TasksTableFilterComposer extends Composer<_$TasDatabase, $TasksTable> {
 
   ColumnFilters<bool> get dueHasTime => $composableBuilder(
     column: $table.dueHasTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get endsAt => $composableBuilder(
+    column: $table.endsAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6641,6 +6695,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get endsAt => $composableBuilder(
+    column: $table.endsAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get priority => $composableBuilder(
     column: $table.priority,
     builder: (column) => ColumnOrderings(column),
@@ -6736,6 +6795,9 @@ class $$TasksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get endsAt =>
+      $composableBuilder(column: $table.endsAt, builder: (column) => column);
+
   GeneratedColumn<int> get priority =>
       $composableBuilder(column: $table.priority, builder: (column) => column);
 
@@ -6824,6 +6886,7 @@ class $$TasksTableTableManager
                 Value<String> notes = const Value.absent(),
                 Value<int?> dueAt = const Value.absent(),
                 Value<bool> dueHasTime = const Value.absent(),
+                Value<int?> endsAt = const Value.absent(),
                 Value<int> priority = const Value.absent(),
                 Value<String> recurrence = const Value.absent(),
                 Value<String> reminder = const Value.absent(),
@@ -6845,6 +6908,7 @@ class $$TasksTableTableManager
                 notes: notes,
                 dueAt: dueAt,
                 dueHasTime: dueHasTime,
+                endsAt: endsAt,
                 priority: priority,
                 recurrence: recurrence,
                 reminder: reminder,
@@ -6868,6 +6932,7 @@ class $$TasksTableTableManager
                 Value<String> notes = const Value.absent(),
                 Value<int?> dueAt = const Value.absent(),
                 Value<bool> dueHasTime = const Value.absent(),
+                Value<int?> endsAt = const Value.absent(),
                 Value<int> priority = const Value.absent(),
                 Value<String> recurrence = const Value.absent(),
                 Value<String> reminder = const Value.absent(),
@@ -6889,6 +6954,7 @@ class $$TasksTableTableManager
                 notes: notes,
                 dueAt: dueAt,
                 dueHasTime: dueHasTime,
+                endsAt: endsAt,
                 priority: priority,
                 recurrence: recurrence,
                 reminder: reminder,

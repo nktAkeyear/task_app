@@ -4,6 +4,19 @@ DateTime startOfDay(DateTime value) => DateTime(value.year, value.month, value.d
 
 bool sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
+/// True when [day] falls on the start, or between the start and end inclusive.
+bool coversDay(TaskModel task, DateTime day) {
+  final start = task.dueAt;
+  if (start == null) {
+    return false;
+  }
+  final target = startOfDay(day);
+  final from = startOfDay(start);
+  final rawEnd = startOfDay(task.endsAt ?? start);
+  final to = rawEnd.isBefore(from) ? from : rawEnd;
+  return !target.isBefore(from) && !target.isAfter(to);
+}
+
 List<TaskModel> filterTasks({
   required List<TaskModel> tasks,
   required TaskBoard board,
@@ -23,7 +36,7 @@ List<TaskModel> filterTasks({
     TaskBoard.today => searched.where((task) => !task.isCompleted && _isTodayOrOverdue(task, now)),
     TaskBoard.upcoming => searched.where((task) => !task.isCompleted && _isUpcoming(task, now)),
     TaskBoard.completed => searched.where((task) => task.isCompleted),
-    TaskBoard.calendar => searched.where((task) => task.dueAt != null && day != null && sameDay(task.dueAt!, day)),
+    TaskBoard.calendar => searched.where((task) => day != null && coversDay(task, day)),
     TaskBoard.list => searched.where((task) => task.listId == listId && !task.isCompleted),
     TaskBoard.settings => const <TaskModel>[],
   };

@@ -58,6 +58,7 @@ class TaskModel {
     required this.notes,
     required this.dueAt,
     required this.dueHasTime,
+    required this.endsAt,
     required this.priority,
     required this.recurrence,
     required this.reminder,
@@ -76,6 +77,7 @@ class TaskModel {
   final String notes;
   final DateTime? dueAt;
   final bool dueHasTime;
+  final DateTime? endsAt;
   final int priority;
   final String recurrence;
   final String reminder;

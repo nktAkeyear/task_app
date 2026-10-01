@@ -10,7 +10,7 @@ import '../l10n/copy.dart';
 import '../reminders/os_notifications.dart';
 import '../update/app_update.dart';
 import 'calendar_pane.dart';
-import 'create_task_page.dart';
+import 'task_composer.dart';
 import 'detail_pane.dart';
 import 'list_pane.dart';
 import 'settings_pane.dart';
@@ -231,12 +231,25 @@ class _TasShellState extends State<TasShell> {
   }
 
   void _openCreate(bool desktop) {
+    final board = desktop
+        ? _board
+        : (_drill?.board ??
+              switch (_tab) {
+                1 => TaskBoard.today,
+                2 => TaskBoard.calendar,
+                _ => TaskBoard.inbox,
+              });
     final listId = desktop
-        ? (_board == TaskBoard.list ? _listId : null)
+        ? (board == TaskBoard.list ? _listId : null)
         : (_drill?.board == TaskBoard.list ? _drill?.listId : null);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => CreateTaskPage(listId: listId),
+        builder: (context) => TaskComposerPage(
+          listId: listId,
+          applyBoardDate: true,
+          board: board,
+          day: board == TaskBoard.calendar ? _day : null,
+        ),
       ),
     );
   }
@@ -483,7 +496,6 @@ class _TasShellState extends State<TasShell> {
               _month = DateTime(value.year, value.month);
             }),
             onOpen: (id) => _openTask(id, desktop: true),
-            onSelect: (id) => setState(() => _selectedId = id),
             quickAddFocus: _quickAdd,
             searchFocus: _search,
             onQuery: (value) => setState(() => _query = value),
@@ -497,7 +509,6 @@ class _TasShellState extends State<TasShell> {
             showSearch: true,
             searchController: _searchController,
             onOpen: (id) => _openTask(id, desktop: true),
-            onSelect: (id) => setState(() => _selectedId = id),
             onQuery: (value) => setState(() => _query = value),
             searchFocus: _search,
             quickAddFocus: _quickAdd,
@@ -622,9 +633,8 @@ class _TasShellState extends State<TasShell> {
                 _day = value;
                 _month = DateTime(value.year, value.month);
               }),
-              onOpen: (id) => _openTask(id, desktop: false),
-              onSelect: (id) => setState(() => _selectedId = id),
-              quickAddFocus: _quickAdd,
+            onOpen: (id) => _openTask(id, desktop: false),
+            quickAddFocus: _quickAdd,
               searchFocus: _search,
               onQuery: (value) => setState(() => _query = value),
             ),
@@ -645,7 +655,6 @@ class _TasShellState extends State<TasShell> {
             showSearch: true,
             searchController: _searchController,
             onOpen: (id) => _openTask(id, desktop: false),
-            onSelect: (id) => setState(() => _selectedId = id),
             onQuery: (value) => setState(() => _query = value),
             searchFocus: _search,
             quickAddFocus: _quickAdd,

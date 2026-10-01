@@ -36,6 +36,7 @@ class Tasks extends Table {
   TextColumn get notes => text().withDefault(const Constant(''))();
   IntColumn get dueAt => integer().nullable()();
   BoolColumn get dueHasTime => boolean().withDefault(const Constant(false))();
+  IntColumn get endsAt => integer().nullable()();
   IntColumn get priority => integer().withDefault(const Constant(0))();
   TextColumn get recurrence => text().withDefault(const Constant('none'))();
   TextColumn get reminder => text().withDefault(const Constant('none'))();
@@ -262,7 +263,7 @@ class TasDatabase extends _$TasDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -290,6 +291,9 @@ class TasDatabase extends _$TasDatabase {
         await migrator.database.customStatement(
           "UPDATE pomodoro_state SET phase = 'short' WHERE focus = 0",
         );
+      }
+      if (from < 5) {
+        await migrator.addColumn(tasks, tasks.endsAt);
       }
     },
   );

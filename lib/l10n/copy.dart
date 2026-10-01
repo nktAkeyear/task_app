@@ -292,6 +292,14 @@ class Copy {
   String get task => pick('タスク', 'Task', '할 일');
   String get noTask => pick('タスクを付けない', 'No task', '할 일 없음');
   String get start => pick('開始', 'Start', '시작');
+  String get ends => pick('終了', 'End', '종료');
+  String get allDay => pick('終日', 'All day', '하루 종일');
+  String get titleHint => pick('タイトル', 'Title', '제목');
+  String get memo => pick('メモ', 'Memo', '메모');
+  String get notSet => pick('未設定', 'Not set', '설정 안 함');
+  String get editTask => pick('タスクを編集', 'Edit task', '할 일 편집');
+  String get clearEnd => pick('終了を消す', 'Clear end', '종료 지우기');
+  String get edit => pick('編集', 'Edit', '편집');
   String get pause => pick('一時停止', 'Pause', '일시정지');
   String get reset => pick('リセット', 'Reset', '초기화');
   String get pomoHint => pick(
