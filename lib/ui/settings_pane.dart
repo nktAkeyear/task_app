@@ -15,16 +15,21 @@ class SettingsPane extends StatefulWidget {
 }
 
 class _SettingsPaneState extends State<SettingsPane> {
-  late final TextEditingController _url;
-  late final TextEditingController _name;
+  final TextEditingController _url = TextEditingController();
+  final TextEditingController _name = TextEditingController();
   String? _urlError;
+  var _seeded = false;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_seeded) {
+      return;
+    }
     final repo = RepoScope.of(context);
-    _url = TextEditingController(text: repo.syncBaseUrl);
-    _name = TextEditingController(text: repo.deviceName);
+    _url.text = repo.syncBaseUrl;
+    _name.text = repo.deviceName;
+    _seeded = true;
   }
 
   @override

@@ -100,11 +100,11 @@ int _compareNullable(DateTime? a, DateTime? b) {
 }
 
 String emptyCopy(TaskBoard board, {String query = ''}) {
-  if (board == TaskBoard.search) {
-    if (query.trim().isEmpty) {
-      return 'タスク名やメモから探せます。';
-    }
+  if (query.trim().isNotEmpty) {
     return '一致するタスクはありません。';
+  }
+  if (board == TaskBoard.search) {
+    return 'タスク名やメモから探せます。';
   }
   return switch (board) {
     TaskBoard.inbox => '受信箱は空です。下の欄からタスクを追加できます。',

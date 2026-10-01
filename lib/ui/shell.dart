@@ -177,13 +177,12 @@ class _TasShellState extends State<TasShell> {
   }
 
   List<TaskModel> _visible(TaskRepository repo) {
-    if (_board == TaskBoard.calendar) {
-      return repo.tasksFor(board: TaskBoard.calendar, day: _day);
-    }
-    if (_board == TaskBoard.search) {
-      return repo.tasksFor(board: TaskBoard.search, query: _query);
-    }
-    return repo.tasksFor(board: _board, listId: _listId);
+    return repo.tasksFor(
+      board: _board,
+      listId: _listId,
+      day: _board == TaskBoard.calendar ? _day : null,
+      query: _query,
+    );
   }
 
   @override

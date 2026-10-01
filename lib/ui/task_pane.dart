@@ -42,7 +42,7 @@ class TaskPane extends StatelessWidget {
     final repo = RepoScope.of(context);
     final listName = listId == null ? null : repo.listById(listId!)?.name;
     final title = showTitle ? boardLabel(board, listName: listName) : '';
-    final tasks = repo.tasksFor(board: board, listId: listId, day: day, query: board == TaskBoard.search ? query : '');
+    final tasks = repo.tasksFor(board: board, listId: listId, day: day, query: query);
     final manual = board == TaskBoard.inbox || board == TaskBoard.list;
     final width = MediaQuery.sizeOf(context).width;
     final swipe = width < 1080;
@@ -83,7 +83,7 @@ class TaskPane extends StatelessWidget {
           child: tasks.isEmpty
               ? EmptyHint(
                   message: emptyCopy(board, query: query),
-                  icon: board == TaskBoard.search ? Icons.search_off : Icons.task_alt,
+                  icon: query.trim().isNotEmpty || board == TaskBoard.search ? Icons.search_off : Icons.task_alt,
                 )
               : manual
               ? ReorderableListView.builder(
