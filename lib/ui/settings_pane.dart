@@ -7,6 +7,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../app.dart';
 import '../data/task_repository.dart';
+import '../l10n/copy.dart';
+import '../update/app_update.dart';
 
 class SettingsPane extends StatefulWidget {
   const SettingsPane({super.key});
@@ -32,11 +34,13 @@ class _SettingsPaneState extends State<SettingsPane> {
     _url.text = repo.syncBaseUrl;
     _name.text = repo.deviceName;
     _seeded = true;
-    PackageInfo.fromPlatform().then((info) {
-      if (mounted) {
-        setState(() => _version = info.version);
-      }
-    }).catchError((Object _) {});
+    PackageInfo.fromPlatform()
+        .then((info) {
+          if (mounted) {
+            setState(() => _version = info.version);
+          }
+        })
+        .catchError((Object _) {});
   }
 
   @override
@@ -49,43 +53,157 @@ class _SettingsPaneState extends State<SettingsPane> {
   @override
   Widget build(BuildContext context) {
     final repo = RepoScope.of(context);
+    final copy = Copy.of(context);
+    final accentIndex = accentSeeds.indexOf(repo.accent);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
       children: [
-        Text('設定', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+        Text(
+          copy.settings,
+          style: Theme.of(context).textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 8),
-        Text('Tas はこの端末に保存します。同期先は空のままで使えます。', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(
+          copy.settingsLead,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 20),
-        const _Head('外観'),
+        _Head(copy.appearance),
         SegmentedButton<ThemeMode>(
-          segments: const [
-            ButtonSegment(value: ThemeMode.system, label: Text('システム'), icon: Icon(Icons.brightness_auto)),
-            ButtonSegment(value: ThemeMode.light, label: Text('ライト'), icon: Icon(Icons.light_mode_outlined)),
-            ButtonSegment(value: ThemeMode.dark, label: Text('ダーク'), icon: Icon(Icons.dark_mode_outlined)),
+          segments: [
+            ButtonSegment(
+              value: ThemeMode.system,
+              label: Text(copy.system),
+              icon: const Icon(Icons.brightness_auto),
+            ),
+            ButtonSegment(
+              value: ThemeMode.light,
+              label: Text(copy.light),
+              icon: const Icon(Icons.light_mode_outlined),
+            ),
+            ButtonSegment(
+              value: ThemeMode.dark,
+              label: Text(copy.dark),
+              icon: const Icon(Icons.dark_mode_outlined),
+            ),
           ],
           selected: {repo.themeMode},
           onSelectionChanged: (value) => repo.setTheme(value.first),
         ),
+        const SizedBox(height: 16),
+        _Head(copy.accent),
+        Wrap(
+          spacing: 8,
+          children: [
+            for (var index = 0; index < accentSeeds.length; index++)
+              IconButton(
+                tooltip: copy.accentName(index),
+                onPressed: () => repo.setAccent(accentSeeds[index]),
+                icon: CircleAvatar(
+                  backgroundColor: Color(accentSeeds[index]),
+                  child: accentIndex == index
+                      ? const Icon(Icons.check, color: Colors.white, size: 18)
+                      : null,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _Head(copy.language),
+        SegmentedButton<String>(
+          segments: const [
+            ButtonSegment(value: 'ja', label: Text('日本語')),
+            ButtonSegment(value: 'en', label: Text('English')),
+            ButtonSegment(value: 'ko', label: Text('한국어')),
+          ],
+          selected: {repo.language},
+          onSelectionChanged: (value) => repo.setLanguage(value.first),
+        ),
+        const SizedBox(height: 16),
+        _Head(copy.homeTab),
+        Wrap(
+          spacing: 8,
+          children: [
+            for (final entry in [0, 1, 2, 3])
+              ChoiceChip(
+                label: Text(switch (entry) {
+                  0 => copy.lists,
+                  1 => copy.today,
+                  2 => copy.calendar,
+                  _ => copy.tools,
+                }),
+                selected: repo.homeTab == entry,
+                onSelected: (_) => repo.setHomeTab(entry),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _Head(copy.pomodoro),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _Minutes(
+              label: copy.focusMinutes,
+              value: repo.pomoFocusMin,
+              onChanged: (value) => repo.setPomoDurations(
+                focus: value,
+                shortBreak: repo.pomoShortMin,
+                longBreak: repo.pomoLongMin,
+              ),
+            ),
+            _Minutes(
+              label: copy.shortMinutes,
+              value: repo.pomoShortMin,
+              onChanged: (value) => repo.setPomoDurations(
+                focus: repo.pomoFocusMin,
+                shortBreak: value,
+                longBreak: repo.pomoLongMin,
+              ),
+            ),
+            _Minutes(
+              label: copy.longMinutes,
+              value: repo.pomoLongMin,
+              onChanged: (value) => repo.setPomoDurations(
+                focus: repo.pomoFocusMin,
+                shortBreak: repo.pomoShortMin,
+                longBreak: value,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 24),
-        const _Head('この端末'),
+        _Head(copy.thisDevice),
         TextField(
           controller: _name,
-          decoration: const InputDecoration(labelText: '端末名'),
+          decoration: InputDecoration(labelText: copy.deviceName),
           onSubmitted: repo.setDeviceName,
         ),
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerLeft,
-          child: OutlinedButton(onPressed: () => repo.setDeviceName(_name.text), child: const Text('端末名を保存')),
+          child: OutlinedButton(
+            onPressed: () => repo.setDeviceName(_name.text),
+            child: Text(copy.saveDevice),
+          ),
         ),
         const SizedBox(height: 8),
-        Text('端末 ID: ${repo.deviceId}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+        Text(
+          copy.deviceId(repo.deviceId),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 13,
+          ),
+        ),
         const SizedBox(height: 24),
-        const _Head('同期'),
+        _Head(copy.sync),
         TextField(
           controller: _url,
           decoration: InputDecoration(
-            labelText: '同期サーバーの URL',
+            labelText: copy.syncUrl,
             hintText: 'http://127.0.0.1:8787',
             errorText: _urlError,
           ),
@@ -95,40 +213,74 @@ class _SettingsPaneState extends State<SettingsPane> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            FilledButton(onPressed: () => _saveUrl(repo), child: const Text('URL を保存')),
+            FilledButton(
+              onPressed: () => _saveUrl(repo),
+              child: Text(copy.saveUrl),
+            ),
             OutlinedButton(
               onPressed: () async {
                 _url.clear();
                 setState(() => _urlError = null);
                 await repo.setSyncUrl('');
               },
-              child: const Text('URL を消す'),
+              child: Text(copy.clearUrl),
             ),
-            OutlinedButton(onPressed: repo.flushSync, child: const Text('今すぐ同期')),
+            OutlinedButton(
+              onPressed: repo.flushSync,
+              child: Text(copy.syncNow),
+            ),
           ],
         ),
         const SizedBox(height: 8),
         Text(repo.syncMessage),
-        Text('未送信の変更: ${repo.outboxCount}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text(
+          copy.pending(repo.outboxCount),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 24),
-        const _Head('バックアップ'),
+        _Head(copy.backup),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            FilledButton(onPressed: () => _exportFile(repo), child: const Text('ファイルに書き出す')),
-            OutlinedButton(onPressed: () => _copy(repo), child: const Text('JSON をコピー')),
-            OutlinedButton(onPressed: () => _importFile(repo), child: const Text('ファイルから読み込む')),
-            OutlinedButton(onPressed: () => _paste(repo), child: const Text('JSON を貼り付け')),
+            FilledButton(
+              onPressed: () => _exportFile(repo),
+              child: Text(copy.exportFile),
+            ),
+            OutlinedButton(
+              onPressed: () => _copy(repo),
+              child: Text(copy.copyJson),
+            ),
+            OutlinedButton(
+              onPressed: () => _importFile(repo),
+              child: Text(copy.importFile),
+            ),
+            OutlinedButton(
+              onPressed: () => _paste(repo),
+              child: Text(copy.pasteJson),
+            ),
           ],
         ),
         const SizedBox(height: 24),
-        const _Head('キーボード'),
-        const Text('Ctrl+N  タスクを追加\nCtrl+F  検索\nCtrl+Enter  完了にする\nJ / K  前後のタスク\nCtrl+1 から Ctrl+5  受信箱、今日、近日、カレンダー、完了'),
+        _Head(copy.keyboard),
+        Text(copy.shortcuts),
         const SizedBox(height: 28),
         Text(
-          _version == null ? 'バージョン' : 'バージョン $_version',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+          copy.versionLabel(_version),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton(
+            onPressed: () => checkForUpdate(context, fromSettings: true),
+            child: Text(copy.checkUpdate),
+          ),
         ),
       ],
     );
@@ -153,11 +305,14 @@ class _SettingsPaneState extends State<SettingsPane> {
         return;
       }
       if (saved != null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('バックアップを書き出しました。')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(Copy.of(context).exported)));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('書き出せませんでした。JSON のコピーを使ってください。')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(Copy.of(context).exportFailed)));
       }
     }
   }
@@ -166,7 +321,8 @@ class _SettingsPaneState extends State<SettingsPane> {
     final json = await repo.exportJson();
     await Clipboard.setData(ClipboardData(text: json));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('JSON をコピーしました。')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(Copy.of(context).copied)));
     }
   }
 
@@ -179,15 +335,19 @@ class _SettingsPaneState extends State<SettingsPane> {
       final raw = utf8.decode(await picked.readAsBytes());
       await repo.importJson(raw);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('バックアップを読み込みました。')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(Copy.of(context).imported)));
       }
     } on FormatException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('読み込めませんでした。ファイルの形式を確認してください。')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(Copy.of(context).importFailed)));
       }
     }
   }
@@ -197,16 +357,22 @@ class _SettingsPaneState extends State<SettingsPane> {
     final text = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('JSON を読み込む'),
+        title: Text(Copy.of(context).pasteTitle),
         content: TextField(
           controller: controller,
           minLines: 6,
           maxLines: 12,
-          decoration: const InputDecoration(hintText: '書き出した JSON を貼り付け'),
+          decoration: InputDecoration(hintText: Copy.of(context).pasteHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
-          FilledButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('読み込む')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(Copy.of(context).cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: Text(Copy.of(context).importAction),
+          ),
         ],
       ),
     );
@@ -216,17 +382,52 @@ class _SettingsPaneState extends State<SettingsPane> {
     try {
       await repo.importJson(text);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('バックアップを読み込みました。')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(Copy.of(context).imported)));
       }
     } on FormatException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('読み込めませんでした。ファイルの形式を確認してください。')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(Copy.of(context).importFailed)));
       }
     }
+  }
+}
+
+class _Minutes extends StatelessWidget {
+  const _Minutes({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 140,
+      child: TextFormField(
+        key: ValueKey('$label-$value'),
+        initialValue: '$value',
+        decoration: InputDecoration(labelText: label),
+        keyboardType: TextInputType.number,
+        onFieldSubmitted: (raw) {
+          final parsed = int.tryParse(raw);
+          if (parsed != null) {
+            onChanged(parsed);
+          }
+        },
+      ),
+    );
   }
 }
 

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../app.dart';
 import '../domain/models.dart';
 import '../domain/recurrence.dart';
+import '../l10n/copy.dart';
 import 'widgets.dart';
 
 class DetailPane extends StatefulWidget {
@@ -79,8 +80,9 @@ class _DetailPaneState extends State<DetailPane> {
     final repo = RepoScope.of(context);
     final task = repo.taskById(widget.taskId);
     final scheme = Theme.of(context).colorScheme;
+    final copy = Copy.of(context);
     if (task == null || task.deleted) {
-      return const EmptyHint(message: 'このタスクは削除されました。', icon: Icons.delete_outline);
+      return EmptyHint(message: copy.taskGone, icon: Icons.delete_outline);
     }
     final items = repo.checklistFor(task.id);
     final lists = repo.lists.where((list) => !list.deleted).toList()
@@ -97,11 +99,19 @@ class _DetailPaneState extends State<DetailPane> {
         TextField(
           controller: _title,
           focusNode: _titleFocus,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          decoration: const InputDecoration(hintText: 'タスク名', border: InputBorder.none, filled: false),
+          style: Theme.of(context).textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w800),
+          decoration: InputDecoration(
+            hintText: copy.taskName,
+            border: InputBorder.none,
+            filled: false,
+          ),
           onChanged: (value) {
             _titleTimer?.cancel();
-            _titleTimer = Timer(const Duration(milliseconds: 120), () => repo.setTitle(task.id, value));
+            _titleTimer = Timer(
+              const Duration(milliseconds: 120),
+              () => repo.setTitle(task.id, value),
+            );
           },
         ),
         const SizedBox(height: 8),
@@ -110,20 +120,28 @@ class _DetailPaneState extends State<DetailPane> {
           focusNode: _notesFocus,
           minLines: 3,
           maxLines: 8,
-          decoration: const InputDecoration(hintText: 'メモ'),
+          decoration: InputDecoration(hintText: copy.notes),
           onChanged: (value) {
             _notesTimer?.cancel();
-            _notesTimer = Timer(const Duration(milliseconds: 120), () => repo.setNotes(task.id, value));
+            _notesTimer = Timer(
+              const Duration(milliseconds: 120),
+              () => repo.setNotes(task.id, value),
+            );
           },
         ),
         const SizedBox(height: 16),
-        const _Label('リスト'),
+        _Label(copy.lists),
         DropdownButtonFormField<String>(
           key: ValueKey(task.listId),
-          initialValue: lists.any((list) => list.id == task.listId) ? task.listId : inboxId,
+          initialValue: lists.any((list) => list.id == task.listId)
+              ? task.listId
+              : inboxId,
           items: [
             for (final list in lists)
-              DropdownMenuItem(value: list.id, child: Text(list.name, overflow: TextOverflow.ellipsis)),
+              DropdownMenuItem(
+                value: list.id,
+                child: Text(list.name, overflow: TextOverflow.ellipsis),
+              ),
           ],
           onChanged: (value) {
             if (value != null) {
@@ -132,7 +150,7 @@ class _DetailPaneState extends State<DetailPane> {
           },
         ),
         const SizedBox(height: 16),
-        const _Label('期限'),
+        _Label(copy.dueLabel),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -141,32 +159,47 @@ class _DetailPaneState extends State<DetailPane> {
             OutlinedButton.icon(
               onPressed: () => _pickDate(task),
               icon: const Icon(Icons.event_outlined),
-              label: Text(task.dueAt == null ? '日付を選ぶ' : formatDue(task.dueAt!, hasTime: false, now: DateTime.now())),
+              label: Text(
+                task.dueAt == null
+                    ? copy.pickDate
+                    : copy.due(
+                        task.dueAt!,
+                        hasTime: false,
+                        now: DateTime.now(),
+                      ),
+              ),
             ),
             OutlinedButton.icon(
               onPressed: task.dueAt == null ? null : () => _pickTime(task),
               icon: const Icon(Icons.schedule),
-              label: Text(task.dueHasTime && task.dueAt != null ? _clock(task.dueAt!) : '時刻'),
+              label: Text(
+                task.dueHasTime && task.dueAt != null
+                    ? _clock(task.dueAt!)
+                    : copy.time,
+              ),
             ),
             if (task.dueAt != null)
-              TextButton(onPressed: () => repo.setDue(task.id, null, hasTime: false), child: const Text('期限を消す')),
+              TextButton(
+                onPressed: () => repo.setDue(task.id, null, hasTime: false),
+                child: Text(copy.clearDue),
+              ),
           ],
         ),
         const SizedBox(height: 16),
-        const _Label('優先度'),
+        _Label(copy.priorityLabel),
         Wrap(
           spacing: 8,
           children: [
             for (final level in const [0, 1, 2, 3])
               ChoiceChip(
-                label: Text(priorityLabel(level)),
+                label: Text(copy.priority(level)),
                 selected: task.priority == level,
                 onSelected: (_) => repo.setPriority(task.id, level),
               ),
           ],
         ),
         const SizedBox(height: 16),
-        const _Label('タグ'),
+        _Label(copy.tags),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -174,30 +207,48 @@ class _DetailPaneState extends State<DetailPane> {
             for (final tag in repo.tags.where((tag) => !tag.deleted))
               FilterChip(
                 label: Text(tag.name),
-                selected: repo.tagsFor(task.id).any((item) => item.id == tag.id),
-                avatar: CircleAvatar(backgroundColor: Color(tag.color), radius: 6),
+                selected: repo
+                    .tagsFor(task.id)
+                    .any((item) => item.id == tag.id),
+                avatar: CircleAvatar(
+                  backgroundColor: Color(tag.color),
+                  radius: 6,
+                ),
                 onSelected: (_) => repo.toggleTag(task.id, tag.id),
               ),
-            ActionChip(avatar: const Icon(Icons.add, size: 18), label: const Text('タグを追加'), onPressed: () => _createTag(context)),
+            ActionChip(
+              avatar: const Icon(Icons.add, size: 18),
+              label: Text(copy.addTag),
+              onPressed: () => _createTag(context),
+            ),
           ],
         ),
         const SizedBox(height: 16),
-        const _Label('チェックリスト'),
+        _Label(copy.checklist),
         for (final item in items)
           Row(
             children: [
               SizedBox(
                 width: 44,
                 height: 44,
-                child: Checkbox(value: item.done, onChanged: (_) => repo.toggleChecklistItem(item.id)),
+                child: Checkbox(
+                  value: item.done,
+                  onChanged: (_) => repo.toggleChecklistItem(item.id),
+                ),
               ),
               Expanded(
                 child: Text(
                   item.title,
-                  style: TextStyle(decoration: item.done ? TextDecoration.lineThrough : null),
+                  style: TextStyle(
+                    decoration: item.done ? TextDecoration.lineThrough : null,
+                  ),
                 ),
               ),
-              IconButton(tooltip: '項目を削除', onPressed: () => repo.deleteChecklistItem(item.id), icon: const Icon(Icons.close)),
+              IconButton(
+                tooltip: copy.deleteItem,
+                onPressed: () => repo.deleteChecklistItem(item.id),
+                icon: const Icon(Icons.close),
+              ),
             ],
           ),
         Row(
@@ -205,35 +256,52 @@ class _DetailPaneState extends State<DetailPane> {
             Expanded(
               child: TextField(
                 controller: _check,
-                decoration: const InputDecoration(hintText: '項目を追加'),
+                decoration: InputDecoration(hintText: copy.addItem),
                 onSubmitted: (value) => _addCheck(task.id, value),
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(tooltip: '項目を追加', onPressed: () => _addCheck(task.id, _check.text), icon: const Icon(Icons.add)),
+            IconButton.filled(
+              tooltip: copy.addItem,
+              onPressed: () => _addCheck(task.id, _check.text),
+              icon: const Icon(Icons.add),
+            ),
           ],
         ),
         const SizedBox(height: 16),
-        const _Label('繰り返し'),
+        _Label(copy.repeat),
         Wrap(
           spacing: 8,
           children: [
-            for (final preset in const [recurrenceNone, recurrenceDaily, recurrenceWeekly, recurrenceMonthly, recurrenceWeekdays])
+            for (final preset in const [
+              recurrenceNone,
+              recurrenceDaily,
+              recurrenceWeekly,
+              recurrenceMonthly,
+              recurrenceWeekdays,
+            ])
               ChoiceChip(
-                label: Text(recurrenceLabel(preset)),
+                label: Text(copy.recurrence(preset)),
                 selected: task.recurrence == preset,
                 onSelected: (_) => repo.setRecurrence(task.id, preset),
               ),
           ],
         ),
         const SizedBox(height: 16),
-        const _Label('リマインダー'),
+        _Label(copy.reminderLabel),
         Wrap(
           spacing: 8,
           children: [
-            for (final preset in const [reminderNone, reminderOnTime, reminder5m, reminder15m, reminder1h, reminder1d])
+            for (final preset in const [
+              reminderNone,
+              reminderOnTime,
+              reminder5m,
+              reminder15m,
+              reminder1h,
+              reminder1d,
+            ])
               ChoiceChip(
-                label: Text(reminderLabel(preset)),
+                label: Text(copy.reminder(preset)),
                 selected: task.reminder == preset,
                 onSelected: (_) => repo.setReminder(task.id, preset),
               ),
@@ -242,14 +310,21 @@ class _DetailPaneState extends State<DetailPane> {
         if (task.reminderAt != null) ...[
           const SizedBox(height: 8),
           Text(
-            '通知予定: ${formatDue(task.reminderAt!, hasTime: true, now: DateTime.now())}',
+            copy.notifyAt(
+              copy.due(task.reminderAt!, hasTime: true, now: DateTime.now()),
+            ),
             style: TextStyle(color: scheme.onSurfaceVariant),
           ),
         ],
         const SizedBox(height: 24),
         OutlinedButton.icon(
           onPressed: () async {
-            final ok = await confirmAction(context, title: 'タスクを削除', message: '「${task.title}」を削除します。', action: '削除');
+            final ok = await confirmAction(
+              context,
+              title: copy.deleteTask,
+              message: copy.deleteTaskAsk(task.title),
+              action: copy.delete,
+            );
             if (!ok || !context.mounted) {
               return;
             }
@@ -262,7 +337,7 @@ class _DetailPaneState extends State<DetailPane> {
             }
           },
           icon: const Icon(Icons.delete_outline),
-          label: const Text('タスクを削除'),
+          label: Text(copy.deleteTask),
         ),
       ],
     );
@@ -272,17 +347,19 @@ class _DetailPaneState extends State<DetailPane> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('詳細'),
+        title: Text(copy.detail),
         actions: [
           IconButton(
-            tooltip: task.isCompleted ? '未完了に戻す' : '完了にする',
+            tooltip: task.isCompleted ? copy.markUndone : copy.markDone,
             onPressed: () async {
               final message = await repo.toggleComplete(task.id);
               if (context.mounted) {
                 showUndoSnack(context, message, repo.undo);
               }
             },
-            icon: Icon(task.isCompleted ? Icons.check_circle : Icons.circle_outlined),
+            icon: Icon(
+              task.isCompleted ? Icons.check_circle : Icons.circle_outlined,
+            ),
           ),
         ],
       ),
@@ -313,7 +390,13 @@ class _DetailPaneState extends State<DetailPane> {
       return;
     }
     final due = task.dueHasTime && task.dueAt != null
-        ? DateTime(picked.year, picked.month, picked.day, task.dueAt!.hour, task.dueAt!.minute)
+        ? DateTime(
+            picked.year,
+            picked.month,
+            picked.day,
+            task.dueAt!.hour,
+            task.dueAt!.minute,
+          )
         : DateTime(picked.year, picked.month, picked.day);
     await RepoScope.of(context).setDue(task.id, due, hasTime: task.dueHasTime);
   }
@@ -338,20 +421,27 @@ class _DetailPaneState extends State<DetailPane> {
   }
 
   Future<void> _createTag(BuildContext context) async {
+    final copy = Copy.of(context);
     final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('タグを追加'),
+        title: Text(copy.addTag),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'タグ名'),
+          decoration: InputDecoration(labelText: copy.tagName),
           onSubmitted: (value) => Navigator.pop(context, value.trim()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
-          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('追加')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(copy.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: Text(copy.add),
+          ),
         ],
       ),
     );
@@ -364,7 +454,8 @@ class _DetailPaneState extends State<DetailPane> {
       await repo.toggleTag(widget.taskId, id);
     } on FormatException catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
   }
@@ -386,7 +477,10 @@ class _Label extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

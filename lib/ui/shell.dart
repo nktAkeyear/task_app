@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import '../app.dart';
 import '../data/task_repository.dart';
 import '../domain/models.dart';
+import '../l10n/copy.dart';
 import '../reminders/os_notifications.dart';
+import '../update/app_update.dart';
 import 'calendar_pane.dart';
 import 'create_task_page.dart';
 import 'detail_pane.dart';
@@ -53,7 +55,9 @@ class _TasShellState extends State<TasShell> {
   String? _selectedId;
   String _query = '';
   String? _desktopTool;
-  final List<_Place> _stack = [const _Place.listRoot()];
+  int _tab = 1;
+  _Drill? _drill;
+  var _tabReady = false;
   late DateTime _month;
   late DateTime _day;
   final _quickAdd = FocusNode();
@@ -62,6 +66,8 @@ class _TasShellState extends State<TasShell> {
   final _notices = <TaskModel>[];
   Timer? _reminderTimer;
   Timer? _syncTimer;
+  Timer? _pomoTimer;
+  var _askedUpdate = false;
 
   @override
   void initState() {
@@ -70,6 +76,27 @@ class _TasShellState extends State<TasShell> {
     _month = DateTime(now.year, now.month);
     _day = DateTime(now.year, now.month, now.day);
     WidgetsBinding.instance.addPostFrameCallback((_) => _arm());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repo = RepoScope.of(context);
+    if (!_tabReady) {
+      _tab = repo.homeTab.clamp(0, 3);
+      _tabReady = true;
+    }
+    if (repo.tools.pomoRunning) {
+      _pomoTimer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) {
+          return;
+        }
+        RepoScope.of(context).tools.tickPomo();
+      });
+    } else {
+      _pomoTimer?.cancel();
+      _pomoTimer = null;
+    }
   }
 
   Future<void> _arm() async {
@@ -102,12 +129,24 @@ class _TasShellState extends State<TasShell> {
         RepoScope.of(context).flushSync();
       }
     });
+    await OsNotifications.instance.syncHabits([
+      ...repo.tools.habits,
+      ...repo.tools.archivedHabits,
+    ]);
+    final testing = WidgetsBinding.instance.runtimeType.toString().contains(
+      'Test',
+    );
+    if (!testing && mounted && !_askedUpdate) {
+      _askedUpdate = true;
+      await checkForUpdate(context, fromSettings: false);
+    }
   }
 
   @override
   void dispose() {
     _reminderTimer?.cancel();
     _syncTimer?.cancel();
+    _pomoTimer?.cancel();
     _quickAdd.dispose();
     _search.dispose();
     _searchController.dispose();
@@ -154,28 +193,47 @@ class _TasShellState extends State<TasShell> {
     });
   }
 
-  void _go(_Place place) {
+  void _selectTab(int index) {
     setState(() {
-      final top = _stack.last;
-      if (top == place) {
-        return;
-      }
-      _stack.add(place);
+      _tab = index;
+      _drill = null;
     });
   }
 
-  void _popInApp() {
-    if (_stack.length <= 1) {
+  void _popBack() {
+    if (_drill != null) {
+      setState(() => _drill = null);
       return;
     }
-    setState(() => _stack.removeLast());
+    final home = RepoScope.of(context).homeTab.clamp(0, 3);
+    if (_tab != home) {
+      setState(() {
+        _tab = home;
+        _drill = null;
+      });
+    }
+  }
+
+  void _openTool(String id, {required bool desktop}) {
+    if (desktop) {
+      if (id == 'search') {
+        setState(() {
+          _desktopTool = null;
+          _board = TaskBoard.search;
+          _listId = null;
+        });
+        return;
+      }
+      setState(() => _desktopTool = id);
+      return;
+    }
+    setState(() => _drill = _Drill.tool(id));
   }
 
   void _openCreate(bool desktop) {
-    final place = _stack.last;
     final listId = desktop
         ? (_board == TaskBoard.list ? _listId : null)
-        : (place.board == TaskBoard.list ? place.listId : null);
+        : (_drill?.board == TaskBoard.list ? _drill?.listId : null);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => CreateTaskPage(listId: listId),
@@ -191,7 +249,7 @@ class _TasShellState extends State<TasShell> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('設定')),
+          appBar: AppBar(title: Text(Copy.of(context).settings)),
           body: const SettingsPane(),
         ),
       ),
@@ -209,18 +267,26 @@ class _TasShellState extends State<TasShell> {
   }
 
   List<TaskModel> _visible(TaskRepository repo) {
-    final place = _stack.last;
-    final mobile =
-        _stack.length > 1 ||
-        place.drilled ||
-        place.tool != null ||
-        place.tab != 0;
-    final board = !mobile
-        ? _board
-        : place.tool == 'search'
-        ? TaskBoard.search
-        : place.board;
-    final listId = mobile ? place.listId : _listId;
+    final desktop = MediaQuery.sizeOf(context).width >= _desktopWidth;
+    final TaskBoard board;
+    final String? listId;
+    if (desktop) {
+      board = _board;
+      listId = _listId;
+    } else if (_drill?.tool == 'search') {
+      board = TaskBoard.search;
+      listId = null;
+    } else if (_drill?.board != null) {
+      board = _drill!.board!;
+      listId = _drill!.listId;
+    } else {
+      board = switch (_tab) {
+        1 => TaskBoard.today,
+        2 => TaskBoard.calendar,
+        _ => TaskBoard.inbox,
+      };
+      listId = null;
+    }
     return repo.tasksFor(
       board: board,
       listId: listId,
@@ -247,10 +313,12 @@ class _TasShellState extends State<TasShell> {
             child: Padding(
               padding: inset,
               child: PopScope(
-                canPop: desktop || _stack.length <= 1,
+                canPop:
+                    desktop ||
+                    (_drill == null && _tab == repo.homeTab.clamp(0, 3)),
                 onPopInvokedWithResult: (didPop, _) {
                   if (!didPop) {
-                    _popInApp();
+                    _popBack();
                   }
                 },
                 child: Shortcuts(
@@ -320,6 +388,13 @@ class _TasShellState extends State<TasShell> {
                       body: Column(
                         children: [
                           if (_notices.isNotEmpty) _banner(context, desktop),
+                          if (repo.tools.pomoRunning &&
+                              _desktopTool != 'pomodoro' &&
+                              _drill?.tool != 'pomodoro')
+                            PomoChip(
+                              onOpen: () =>
+                                  _openTool('pomodoro', desktop: desktop),
+                            ),
                           Expanded(
                             child: desktop ? _desktop(repo) : _mobile(repo),
                           ),
@@ -350,7 +425,7 @@ class _TasShellState extends State<TasShell> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'リマインダー: ${notice.title}',
+                Copy.of(context).reminderBanner(notice.title),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -360,11 +435,11 @@ class _TasShellState extends State<TasShell> {
                 setState(() => _notices.removeAt(0));
                 _openTask(notice.id, desktop: desktop);
               },
-              child: const Text('開く'),
+              child: Text(Copy.of(context).open),
             ),
             TextButton(
               onPressed: () => setState(() => _notices.removeAt(0)),
-              child: const Text('閉じる'),
+              child: Text(Copy.of(context).close),
             ),
           ],
         ),
@@ -381,7 +456,7 @@ class _TasShellState extends State<TasShell> {
                 child: TextButton.icon(
                   onPressed: () => setState(() => _desktopTool = null),
                   icon: const Icon(Icons.arrow_back),
-                  label: const Text('戻る'),
+                  label: Text(Copy.of(context).back),
                 ),
               ),
               Expanded(
@@ -461,8 +536,8 @@ class _TasShellState extends State<TasShell> {
             key: const Key('pane-detail'),
             width: 420,
             child: _selectedId == null
-                ? const EmptyHint(
-                    message: 'タスクを選ぶと、メモや期限を編集できます。',
+                ? EmptyHint(
+                    message: Copy.of(context).detailEmpty,
                     icon: Icons.edit_outlined,
                   )
                 : DetailPane(
@@ -477,64 +552,60 @@ class _TasShellState extends State<TasShell> {
   }
 
   Widget _mobile(TaskRepository repo) {
-    final place = _stack.last;
-    final back = _stack.length > 1
-        ? Align(
+    final copy = Copy.of(context);
+    final back = _drill == null
+        ? null
+        : Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               key: const Key('back-in-app'),
-              onPressed: _popInApp,
+              onPressed: _popBack,
               icon: const Icon(Icons.arrow_back),
-              label: Text(_stack[_stack.length - 2].tab == 0 ? 'リストへ戻る' : '戻る'),
-            ),
-          )
-        : null;
-    if (place.tool == 'menu') {
-      return Column(
-        children: [
-          ?back,
-          Expanded(
-            child: ToolsMenu(
-              onOpen: (id) => _go(
-                id == 'search' ? const _Place.tool('search') : _Place.tool(id),
+              label: Text(
+                _tab == 0 && _drill!.tool == null
+                    ? copy.backToLists
+                    : copy.back,
               ),
             ),
-          ),
-        ],
-      );
-    }
-    if (place.tool != null && place.tool != 'search') {
+          );
+    if (_drill?.tool != null && _drill!.tool != 'search') {
       return Column(
         children: [
           ?back,
           Expanded(
             child: ToolPage(
-              id: place.tool!,
+              id: _drill!.tool!,
               onOpenTask: (id) => _openTask(id, desktop: false),
             ),
           ),
         ],
       );
     }
-    if (place.tab == 0 && !place.drilled) {
-      return Column(
-        children: [
-          ?back,
-          Expanded(
-            child: ListPane(
-              board: place.board,
-              listId: place.listId,
-              navKeys: false,
-              onSmart: (board) => _go(_Place.smart(board)),
-              onList: (id) => _go(_Place.userList(id)),
-              onSettings: () => _openSettings(false),
-              onCreateTask: () => _openCreate(false),
-            ),
-          ),
-        ],
+    if (_tab == 0 && _drill == null) {
+      return ListPane(
+        board: TaskBoard.inbox,
+        listId: null,
+        navKeys: false,
+        onSmart: (board) => setState(() => _drill = _Drill.board(board)),
+        onList: (id) => setState(() => _drill = _Drill.list(id)),
+        onSettings: () => _openSettings(false),
+        onCreateTask: () => _openCreate(false),
       );
     }
-    if (place.board == TaskBoard.calendar) {
+    if (_tab == 3 && _drill == null) {
+      return ToolsMenu(
+        onOpen: (id) => setState(() => _drill = _Drill.tool(id)),
+      );
+    }
+    final board = _drill?.tool == 'search'
+        ? TaskBoard.search
+        : _drill?.board ??
+              switch (_tab) {
+                1 => TaskBoard.today,
+                2 => TaskBoard.calendar,
+                _ => TaskBoard.inbox,
+              };
+    if (board == TaskBoard.calendar) {
       return Column(
         children: [
           ?back,
@@ -566,8 +637,8 @@ class _TasShellState extends State<TasShell> {
         ?back,
         Expanded(
           child: TaskPane(
-            board: place.tool == 'search' ? TaskBoard.search : place.board,
-            listId: place.listId,
+            board: board,
+            listId: _drill?.listId,
             selectedId: _selectedId,
             query: _query,
             day: _day,
@@ -586,32 +657,29 @@ class _TasShellState extends State<TasShell> {
   }
 
   Widget _bottomNav() {
+    final copy = Copy.of(context);
     return NavigationBar(
-      selectedIndex: _stack.last.tab,
-      onDestinationSelected: (index) {
-        _go(switch (index) {
-          1 => const _Place.today(),
-          2 => const _Place.calendar(),
-          3 => const _Place.tools(),
-          _ => const _Place.listRoot(),
-        });
-      },
-      destinations: const [
+      selectedIndex: _tab,
+      onDestinationSelected: _selectTab,
+      destinations: [
         NavigationDestination(
-          icon: Icon(Icons.list_alt_outlined),
-          label: 'リスト',
+          icon: const Icon(Icons.list_alt_outlined),
+          label: copy.lists,
         ),
         NavigationDestination(
-          icon: Icon(Icons.today_outlined, key: Key('nav-today')),
-          label: '今日',
+          icon: const Icon(Icons.today_outlined, key: Key('nav-today')),
+          label: copy.today,
         ),
         NavigationDestination(
-          icon: Icon(Icons.calendar_month_outlined, key: Key('nav-calendar')),
-          label: 'カレンダー',
+          icon: const Icon(
+            Icons.calendar_month_outlined,
+            key: Key('nav-calendar'),
+          ),
+          label: copy.calendar,
         ),
         NavigationDestination(
-          icon: Icon(Icons.grid_view_outlined, key: Key('nav-tools')),
-          label: 'ツール',
+          icon: const Icon(Icons.grid_view_outlined, key: Key('nav-tools')),
+          label: copy.tools,
         ),
       ],
     );
@@ -619,17 +687,11 @@ class _TasShellState extends State<TasShell> {
 
   void _focusNew(bool desktop) {
     if (!desktop &&
-        (_stack.last.tool != null ||
-            (_stack.last.tab == 0 && !_stack.last.drilled))) {
-      _go(
-        const _Place(
-          tab: 0,
-          board: TaskBoard.inbox,
-          listId: null,
-          drilled: true,
-          tool: null,
-        ),
-      );
+        (_drill?.tool != null || (_tab == 0 && _drill == null) || _tab == 3)) {
+      setState(() {
+        _tab = 0;
+        _drill = const _Drill.board(TaskBoard.inbox);
+      });
     } else if (desktop &&
         (_board == TaskBoard.settings || _desktopTool != null)) {
       setState(() {
@@ -644,7 +706,7 @@ class _TasShellState extends State<TasShell> {
 
   void _focusSearch(bool desktop) {
     if (!desktop) {
-      _go(const _Place.tool('search'));
+      setState(() => _drill = const _Drill.tool('search'));
     } else if (_board == TaskBoard.settings || _desktopTool != null) {
       setState(() {
         _desktopTool = null;
@@ -677,86 +739,14 @@ class _TasShellState extends State<TasShell> {
   }
 }
 
-class _Place {
-  const _Place({
-    required this.tab,
-    required this.board,
-    required this.listId,
-    required this.drilled,
-    required this.tool,
-  });
-
-  const _Place.listRoot()
-    : tab = 0,
-      board = TaskBoard.inbox,
-      listId = null,
-      drilled = false,
+class _Drill {
+  const _Drill.board(this.board)
+    : listId = null,
       tool = null;
+  const _Drill.list(this.listId) : board = TaskBoard.list, tool = null;
+  const _Drill.tool(this.tool) : board = null, listId = null;
 
-  const _Place.today()
-    : tab = 1,
-      board = TaskBoard.today,
-      listId = null,
-      drilled = true,
-      tool = null;
-
-  const _Place.calendar()
-    : tab = 2,
-      board = TaskBoard.calendar,
-      listId = null,
-      drilled = true,
-      tool = null;
-
-  const _Place.tools()
-    : tab = 3,
-      board = TaskBoard.inbox,
-      listId = null,
-      drilled = false,
-      tool = 'menu';
-
-  const _Place.userList(this.listId)
-    : tab = 0,
-      board = TaskBoard.list,
-      drilled = true,
-      tool = null;
-
-  const _Place.tool(this.tool)
-    : tab = 3,
-      board = TaskBoard.inbox,
-      listId = null,
-      drilled = false;
-
-  factory _Place.smart(TaskBoard board) {
-    return switch (board) {
-      TaskBoard.today => const _Place.today(),
-      TaskBoard.calendar => const _Place.calendar(),
-      TaskBoard.search => const _Place.tool('search'),
-      _ => _Place(
-        tab: 0,
-        board: board,
-        listId: null,
-        drilled: true,
-        tool: null,
-      ),
-    };
-  }
-
-  final int tab;
-  final TaskBoard board;
+  final TaskBoard? board;
   final String? listId;
-  final bool drilled;
   final String? tool;
-
-  @override
-  bool operator ==(Object other) {
-    return other is _Place &&
-        other.tab == tab &&
-        other.board == board &&
-        other.listId == listId &&
-        other.drilled == drilled &&
-        other.tool == tool;
-  }
-
-  @override
-  int get hashCode => Object.hash(tab, board, listId, drilled, tool);
 }

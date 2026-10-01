@@ -6,8 +6,11 @@ import 'data/task_repository.dart';
 import 'ui/shell.dart';
 
 class RepoScope extends InheritedNotifier<TaskRepository> {
-  const RepoScope({required TaskRepository repository, required super.child, super.key})
-    : super(notifier: repository);
+  const RepoScope({
+    required TaskRepository repository,
+    required super.child,
+    super.key,
+  }) : super(notifier: repository);
 
   static TaskRepository of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<RepoScope>();
@@ -31,15 +34,15 @@ class TasApp extends StatelessWidget {
           return MaterialApp(
             title: 'Tas',
             debugShowCheckedModeBanner: false,
-            locale: const Locale('ja'),
-            supportedLocales: const [Locale('ja')],
+            locale: Locale(_localeCode(repository.language)),
+            supportedLocales: const [Locale('ja'), Locale('en'), Locale('ko')],
             localizationsDelegates: const [
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            theme: tasTheme(Brightness.light),
-            darkTheme: tasTheme(Brightness.dark),
+            theme: tasTheme(Brightness.light, seed: repository.accent),
+            darkTheme: tasTheme(Brightness.dark, seed: repository.accent),
             themeMode: repository.themeMode,
             scrollBehavior: const TasScrollBehavior(),
             home: const TasShell(),
@@ -70,7 +73,10 @@ class TasErrorApp extends StatelessWidget {
               children: [
                 const Icon(Icons.error_outline, size: 36),
                 const SizedBox(height: 12),
-                const Text('データを開けませんでした。', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const Text(
+                  'データを開けませんでした。',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 8),
                 Text(detail, textAlign: TextAlign.center),
                 const SizedBox(height: 8),
@@ -96,28 +102,51 @@ class TasScrollBehavior extends MaterialScrollBehavior {
   };
 }
 
-ThemeData tasTheme(Brightness brightness) {
+const accentSeeds = <int>[
+  0xFF1C4E4A,
+  0xFF2F5D9F,
+  0xFFC46B2D,
+  0xFF8A3E6B,
+  0xFF5C4A8A,
+];
+
+String _localeCode(String language) {
+  return switch (language) {
+    'en' => 'en',
+    'ko' => 'ko',
+    _ => 'ja',
+  };
+}
+
+ThemeData tasTheme(Brightness brightness, {int seed = 0xFF1C4E4A}) {
   final light = brightness == Brightness.light;
-  final scheme = ColorScheme.fromSeed(
-    seedColor: const Color(0xFF1C4E4A),
+  final seeded = ColorScheme.fromSeed(
+    seedColor: Color(seed),
     brightness: brightness,
-  ).copyWith(
-    primary: light ? const Color(0xFF1C4E4A) : const Color(0xFF9FCEC6),
-    onPrimary: light ? Colors.white : const Color(0xFF08312E),
+  );
+  final scheme = seeded.copyWith(
     surface: light ? const Color(0xFFF7F6F3) : const Color(0xFF141614),
     surfaceContainerLow: light ? Colors.white : const Color(0xFF1C1F1C),
-    surfaceContainerHigh: light ? const Color(0xFFEBE8E2) : const Color(0xFF2A2E2A),
+    surfaceContainerHigh: light
+        ? const Color(0xFFEBE8E2)
+        : const Color(0xFF2A2E2A),
     onSurface: light ? const Color(0xFF1C1B19) : const Color(0xFFF3F1EA),
     onSurfaceVariant: light ? const Color(0xFF4E4A43) : const Color(0xFFCBC6BC),
     outlineVariant: light ? const Color(0xFFD4CFC6) : const Color(0xFF3A3F3A),
     error: light ? const Color(0xFF9F1D1D) : const Color(0xFFFFB4AB),
   );
-  final buttonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
+  final buttonShape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12),
+  );
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: scheme.surface,
-    fontFamilyFallback: const ['Noto Sans CJK JP', 'Noto Sans JP', 'Droid Sans Fallback'],
+    fontFamilyFallback: const [
+      'Noto Sans CJK JP',
+      'Noto Sans JP',
+      'Droid Sans Fallback',
+    ],
     appBarTheme: AppBarTheme(
       backgroundColor: scheme.surface,
       foregroundColor: scheme.onSurface,
@@ -126,13 +155,22 @@ ThemeData tasTheme(Brightness brightness) {
       centerTitle: false,
     ),
     iconButtonTheme: IconButtonThemeData(
-      style: IconButton.styleFrom(minimumSize: const Size(44, 44), tapTargetSize: MaterialTapTargetSize.padded),
+      style: IconButton.styleFrom(
+        minimumSize: const Size(44, 44),
+        tapTargetSize: MaterialTapTargetSize.padded,
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(minimumSize: const Size(44, 44), shape: buttonShape),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(44, 44),
+        shape: buttonShape,
+      ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44), shape: buttonShape),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(44, 44),
+        shape: buttonShape,
+      ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
@@ -141,7 +179,10 @@ ThemeData tasTheme(Brightness brightness) {
       filled: true,
       fillColor: scheme.surfaceContainerLow,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: scheme.outlineVariant)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: scheme.outlineVariant),
+      ),
     ),
     dividerColor: scheme.outlineVariant,
     listTileTheme: const ListTileThemeData(minTileHeight: 52),

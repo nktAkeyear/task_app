@@ -13,7 +13,8 @@ The interface is Japanese. Code, identifiers, and this README are English.
 - Search across title and notes.
 - Create form (title, notes, due date and time, priority, list). Quick add still parses a title; the + action opens the form.
 - Phone back follows the in-app stack (lists, today, calendar, tools, and the create form) and leaves the app only when that stack is empty.
-- Offline tools, kept off the main three tabs: ポモドーロ (25/5, optional task, finished-session count), Eisenhower matrix (重要×緊急), daily habits with a streak, and one diary entry per day. They live in the same SQLite file and are not part of sync.
+- Offline tools, kept off the main three tabs: ポモドーロ (focus, short break, and long break minutes, optional task, finished-session count, remaining time on other screens), Eisenhower matrix (重要×緊急), daily habits (check, streak, last 7 days, color, archive, optional reminder), and one diary entry per day. They live in the same SQLite file and are not part of sync.
+- Settings store the accent color, language (日本語, English, 한국어), home tab (default 今日), and pomodoro durations. On launch, and from settings, the app checks GitHub for a newer release when online and asks before downloading an APK.
 - Light, dark, and system themes.
 - In-app reminders. OS local notifications are attempted on Android and Windows when the plugin initializes.
 - JSON export and import for a local backup.

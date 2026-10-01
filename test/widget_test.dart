@@ -96,14 +96,14 @@ void main() {
     await tester.pumpWidget(TasApp(repository: repo));
     await tester.pump();
 
-    expect(tester.getTopLeft(find.text('Tas')).dy, greaterThanOrEqualTo(48));
+    expect(tester.getTopLeft(find.text('今日').first).dy, greaterThanOrEqualTo(48));
     expect(
       tester.getBottomLeft(find.byType(NavigationBar)).dy,
       lessThanOrEqualTo(844 - 24),
     );
   });
 
-  testWidgets('phone back returns to the list and closes the create form', (
+  testWidgets('tabs do not stack and system back leaves only the home tab', (
     tester,
   ) async {
     final repo = TaskRepository(
@@ -118,32 +118,79 @@ void main() {
 
     await tester.pumpWidget(TasApp(repository: repo));
     await tester.pump();
+    expect(find.byKey(const Key('back-in-app')), findsNothing);
+    expect(find.text('今日のタスクはありません。'), findsOneWidget);
 
+    await tester.tap(find.text('リスト').first);
+    await tester.pump();
+    expect(find.byKey(const Key('back-in-app')), findsNothing);
     await tester.tap(find.text('受信箱').first);
     await tester.pump();
-    await tester.tap(find.byKey(const Key('nav-today')));
-    await tester.pump();
     expect(find.text('リストへ戻る'), findsOneWidget);
-
-    await tester.binding.handlePopRoute();
-    await tester.pump();
-    expect(find.text('リストへ戻る'), findsOneWidget);
-    expect(find.text('受信箱'), findsWidgets);
 
     await tester.tap(find.byKey(const Key('create-task')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('タスクを作成'), findsOneWidget);
     expect(find.byKey(const Key('create-title')), findsOneWidget);
-    expect(find.byKey(const Key('create-notes')), findsOneWidget);
     expect(find.text('優先度'), findsOneWidget);
-    expect(find.text('リスト'), findsWidgets);
 
     await tester.binding.handlePopRoute();
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('タスクを作成'), findsNothing);
+    expect(find.text('リストへ戻る'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.byKey(const Key('back-in-app')), findsNothing);
     expect(find.text('受信箱'), findsWidgets);
+
+    final leftHome = await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(leftHome, isTrue);
+    expect(find.text('今日のタスクはありません。'), findsOneWidget);
+    expect(find.byKey(const Key('back-in-app')), findsNothing);
+
+    await tester.tap(find.text('リスト').first);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('nav-today')));
+    await tester.pump();
+    expect(find.byKey(const Key('back-in-app')), findsNothing);
+    final leave = await tester.binding.handlePopRoute();
+    expect(leave, isFalse);
+  });
+
+  testWidgets('English and Korean cover the same navigation labels', (
+    tester,
+  ) async {
+    final repo = TaskRepository(
+      TasDatabase.memory(),
+      now: () => DateTime(2026, 10, 1, 9),
+    );
+    await repo.init();
+    await repo.setLanguage('en');
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(TasApp(repository: repo));
+    await tester.pump();
+    expect(find.text('Today'), findsWidgets);
+    expect(find.text('Lists'), findsWidgets);
+    expect(find.text('Nothing due today.'), findsOneWidget);
+
+    await repo.setLanguage('ko');
+    await tester.pump();
+    expect(find.text('오늘'), findsWidgets);
+    expect(find.text('목록'), findsWidgets);
+    expect(find.text('오늘 할 일이 없습니다.'), findsOneWidget);
+
+    await repo.setLanguage('ja');
+    await tester.pump();
+    expect(find.text('今日'), findsWidgets);
+    expect(find.text('今日のタスクはありません。'), findsOneWidget);
   });
 
   testWidgets('tools keep habits, the matrix, and the diary offline', (

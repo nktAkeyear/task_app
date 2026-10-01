@@ -40,7 +40,8 @@ class Tasks extends Table {
   TextColumn get recurrence => text().withDefault(const Constant('none'))();
   TextColumn get reminder => text().withDefault(const Constant('none'))();
   IntColumn get reminderAt => integer().nullable()();
-  BoolColumn get reminderFired => boolean().withDefault(const Constant(false))();
+  BoolColumn get reminderFired =>
+      boolean().withDefault(const Constant(false))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   IntColumn get completedAt => integer().nullable()();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
@@ -156,6 +157,9 @@ class Habits extends Table {
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   IntColumn get createdAt => integer()();
+  IntColumn get color => integer().withDefault(const Constant(0xFF1F4B4A))();
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+  IntColumn get reminderMinute => integer().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -207,6 +211,7 @@ class PomodoroStates extends Table {
   IntColumn get id => integer()();
   TextColumn get taskId => text().nullable()();
   BoolColumn get focus => boolean().withDefault(const Constant(true))();
+  TextColumn get phase => text().withDefault(const Constant('focus'))();
   IntColumn get remainingMs => integer()();
   BoolColumn get running => boolean().withDefault(const Constant(false))();
   IntColumn get anchorMs => integer().nullable()();
@@ -257,7 +262,7 @@ class TasDatabase extends _$TasDatabase {
   }
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -276,6 +281,15 @@ class TasDatabase extends _$TasDatabase {
         await migrator.createTable(diaryEntries);
         await migrator.createTable(pomodoroSessions);
         await migrator.createTable(pomodoroStates);
+      }
+      if (from < 4) {
+        await migrator.addColumn(habits, habits.color);
+        await migrator.addColumn(habits, habits.archived);
+        await migrator.addColumn(habits, habits.reminderMinute);
+        await migrator.addColumn(pomodoroStates, pomodoroStates.phase);
+        await migrator.database.customStatement(
+          "UPDATE pomodoro_state SET phase = 'short' WHERE focus = 0",
+        );
       }
     },
   );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../domain/models.dart';
+import '../l10n/copy.dart';
 import 'widgets.dart';
 
 class ListPane extends StatelessWidget {
@@ -29,6 +30,7 @@ class ListPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = RepoScope.of(context);
+    final copy = Copy.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: scheme.surfaceContainerLow,
@@ -49,7 +51,7 @@ class ListPane extends StatelessWidget {
                 if (onCreateTask != null)
                   IconButton(
                     key: const Key('create-task'),
-                    tooltip: 'タスクを作成',
+                    tooltip: copy.createTask,
                     onPressed: onCreateTask,
                     icon: const Icon(Icons.add),
                   ),
@@ -58,7 +60,7 @@ class ListPane extends StatelessWidget {
           ),
           _SmartTile(
             icon: Icons.inbox_outlined,
-            label: '受信箱',
+            label: copy.inbox,
             selected: board == TaskBoard.inbox,
             count: repo.tasksFor(board: TaskBoard.inbox).length,
             onTap: () => onSmart(TaskBoard.inbox),
@@ -66,7 +68,7 @@ class ListPane extends StatelessWidget {
           ),
           _SmartTile(
             icon: Icons.today_outlined,
-            label: '今日',
+            label: copy.today,
             selected: board == TaskBoard.today,
             count: repo.tasksFor(board: TaskBoard.today).length,
             onTap: () => onSmart(TaskBoard.today),
@@ -74,7 +76,7 @@ class ListPane extends StatelessWidget {
           ),
           _SmartTile(
             icon: Icons.date_range_outlined,
-            label: '近日',
+            label: copy.upcoming,
             selected: board == TaskBoard.upcoming,
             count: repo.tasksFor(board: TaskBoard.upcoming).length,
             onTap: () => onSmart(TaskBoard.upcoming),
@@ -82,14 +84,14 @@ class ListPane extends StatelessWidget {
           ),
           _SmartTile(
             icon: Icons.calendar_month_outlined,
-            label: 'カレンダー',
+            label: copy.calendar,
             selected: board == TaskBoard.calendar,
             onTap: () => onSmart(TaskBoard.calendar),
             itemKey: navKeys ? const Key('nav-calendar') : null,
           ),
           _SmartTile(
             icon: Icons.check_circle_outline,
-            label: '完了',
+            label: copy.completed,
             selected: board == TaskBoard.completed,
             count: repo.tasksFor(board: TaskBoard.completed).length,
             onTap: () => onSmart(TaskBoard.completed),
@@ -100,7 +102,7 @@ class ListPane extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  'リスト',
+                  copy.lists,
                   style: TextStyle(
                     color: scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
@@ -108,7 +110,7 @@ class ListPane extends StatelessWidget {
                 ),
                 const Spacer(),
                 IconButton(
-                  tooltip: 'リストを追加',
+                  tooltip: copy.addList,
                   onPressed: () => _createList(context),
                   icon: const Icon(Icons.add),
                 ),
@@ -117,8 +119,8 @@ class ListPane extends StatelessWidget {
           ),
           Expanded(
             child: repo.userLists.isEmpty
-                ? const EmptyHint(
-                    message: '自分のリストはまだありません。',
+                ? EmptyHint(
+                    message: copy.noUserLists,
                     icon: Icons.list_alt_outlined,
                   )
                 : ReorderableListView.builder(
@@ -151,7 +153,7 @@ class ListPane extends StatelessWidget {
           ),
           if (repo.archivedLists.isNotEmpty)
             ExpansionTile(
-              title: const Text('アーカイブ'),
+              title: Text(copy.archive),
               children: [
                 for (final list in repo.archivedLists)
                   ListTile(
@@ -159,7 +161,7 @@ class ListPane extends StatelessWidget {
                     title: Text(list.name),
                     onTap: () => onList(list.id),
                     trailing: IconButton(
-                      tooltip: '元に戻す',
+                      tooltip: copy.unarchive,
                       onPressed: () => repo.setListArchived(list.id, false),
                       icon: const Icon(Icons.unarchive_outlined),
                     ),
@@ -171,7 +173,7 @@ class ListPane extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Text(
-                'ツール',
+                copy.tools,
                 style: TextStyle(
                   color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
@@ -180,34 +182,34 @@ class ListPane extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.timer_outlined),
-              title: const Text('ポモドーロ'),
+              title: Text(copy.pomodoro),
               onTap: () => onTool!('pomodoro'),
             ),
             ListTile(
               leading: const Icon(Icons.grid_view_outlined),
-              title: const Text('マトリックス'),
+              title: Text(copy.matrix),
               onTap: () => onTool!('matrix'),
             ),
             ListTile(
               leading: const Icon(Icons.repeat),
-              title: const Text('習慣'),
+              title: Text(copy.habits),
               onTap: () => onTool!('habits'),
             ),
             ListTile(
               leading: const Icon(Icons.menu_book_outlined),
-              title: const Text('日記'),
+              title: Text(copy.diary),
               onTap: () => onTool!('diary'),
             ),
             ListTile(
               leading: const Icon(Icons.search),
-              title: const Text('検索'),
+              title: Text(copy.search),
               onTap: () => onTool!('search'),
             ),
           ],
           const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.settings_outlined),
-            title: const Text('設定'),
+            title: Text(copy.settings),
             selected: board == TaskBoard.settings,
             onTap: onSettings,
           ),
@@ -218,7 +220,11 @@ class ListPane extends StatelessWidget {
 
   Future<void> _createList(BuildContext context) async {
     final repo = RepoScope.of(context);
-    final name = await _askName(context, title: 'リストを作成', initial: '');
+    final name = await _askName(
+      context,
+      title: Copy.of(context).createList,
+      initial: '',
+    );
     if (name == null || !context.mounted) {
       return;
     }
@@ -237,37 +243,40 @@ class ListPane extends StatelessWidget {
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.drive_file_rename_outline),
-              title: const Text('名前を変更'),
-              onTap: () => Navigator.pop(context, 'rename'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.palette_outlined),
-              title: const Text('色を変える'),
-              onTap: () => Navigator.pop(context, 'color'),
-            ),
-            ListTile(
-              leading: Icon(
-                list.archived
-                    ? Icons.unarchive_outlined
-                    : Icons.archive_outlined,
+      builder: (context) {
+        final copy = Copy.of(context);
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.drive_file_rename_outline),
+                title: Text(copy.rename),
+                onTap: () => Navigator.pop(context, 'rename'),
               ),
-              title: Text(list.archived ? 'アーカイブを解除' : 'アーカイブ'),
-              onTap: () => Navigator.pop(context, 'archive'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: const Text('削除'),
-              onTap: () => Navigator.pop(context, 'delete'),
-            ),
-          ],
-        ),
-      ),
+              ListTile(
+                leading: const Icon(Icons.palette_outlined),
+                title: Text(copy.changeColor),
+                onTap: () => Navigator.pop(context, 'color'),
+              ),
+              ListTile(
+                leading: Icon(
+                  list.archived
+                      ? Icons.unarchive_outlined
+                      : Icons.archive_outlined,
+                ),
+                title: Text(list.archived ? copy.unarchiveList : copy.archive),
+                onTap: () => Navigator.pop(context, 'archive'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: Text(copy.delete),
+                onTap: () => Navigator.pop(context, 'delete'),
+              ),
+            ],
+          ),
+        );
+      },
     );
     if (!context.mounted || action == null) {
       return;
@@ -277,7 +286,7 @@ class ListPane extends StatelessWidget {
       case 'rename':
         final name = await _askName(
           context,
-          title: '名前を変更',
+          title: Copy.of(context).rename,
           initial: list.name,
         );
         if (name != null) {
@@ -291,11 +300,12 @@ class ListPane extends StatelessWidget {
       case 'archive':
         await repo.setListArchived(list.id, !list.archived);
       case 'delete':
+        final copy = Copy.of(context);
         final ok = await confirmAction(
           context,
-          title: 'リストを削除',
-          message: '「${list.name}」を削除します。中のタスクは受信箱に移ります。',
-          action: '削除',
+          title: copy.deleteList,
+          message: copy.deleteListAsk(list.name),
+          action: copy.delete,
         );
         if (ok) {
           final message = await repo.deleteList(list.id);
@@ -382,7 +392,7 @@ class _ListRow extends StatelessWidget {
           children: [
             Text('$count', style: TextStyle(color: scheme.onSurfaceVariant)),
             IconButton(
-              tooltip: 'リストの操作',
+              tooltip: Copy.of(context).listActions,
               onPressed: onMenu,
               icon: const Icon(Icons.more_horiz),
             ),
@@ -429,17 +439,17 @@ Future<String?> _askName(
       content: TextField(
         controller: controller,
         autofocus: true,
-        decoration: const InputDecoration(labelText: '名前'),
+        decoration: InputDecoration(labelText: Copy.of(context).name),
         onSubmitted: (value) => Navigator.pop(context, value.trim()),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('キャンセル'),
+          child: Text(Copy.of(context).cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, controller.text.trim()),
-          child: const Text('保存'),
+          child: Text(Copy.of(context).save),
         ),
       ],
     ),
@@ -450,7 +460,7 @@ Future<int?> _pickColor(BuildContext context, int current) {
   return showDialog<int>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('色'),
+      title: Text(Copy.of(context).color),
       content: Wrap(
         spacing: 8,
         runSpacing: 8,

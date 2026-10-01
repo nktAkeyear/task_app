@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../domain/models.dart';
+import '../l10n/copy.dart';
 
 class CreateTaskPage extends StatefulWidget {
   const CreateTaskPage({this.listId, super.key});
@@ -37,12 +38,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   @override
   Widget build(BuildContext context) {
     final repo = RepoScope.of(context);
-    final lists = repo.lists.where((list) => !list.deleted && !list.archived).toList();
+    final copy = Copy.of(context);
+    final lists = repo.lists
+        .where((list) => !list.deleted && !list.archived)
+        .toList();
     if (!lists.any((list) => list.id == _listId)) {
       _listId = inboxId;
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('タスクを作成')),
+      appBar: AppBar(title: Text(copy.createTask)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
@@ -50,7 +54,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             key: const Key('create-title'),
             controller: _title,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'タスク名'),
+            decoration: InputDecoration(labelText: copy.taskName),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
@@ -59,15 +63,16 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             controller: _notes,
             minLines: 3,
             maxLines: 6,
-            decoration: const InputDecoration(labelText: 'メモ'),
+            decoration: InputDecoration(labelText: copy.notes),
           ),
           const SizedBox(height: 16),
-          const Text('リスト', style: TextStyle(fontWeight: FontWeight.w700)),
+          Text(copy.lists, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             initialValue: _listId,
             items: [
-              for (final list in lists) DropdownMenuItem(value: list.id, child: Text(list.name)),
+              for (final list in lists)
+                DropdownMenuItem(value: list.id, child: Text(list.name)),
             ],
             onChanged: (value) {
               if (value != null) {
@@ -76,7 +81,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             },
           ),
           const SizedBox(height: 16),
-          const Text('期限', style: TextStyle(fontWeight: FontWeight.w700)),
+          Text(
+            copy.dueLabel,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -84,11 +92,17 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             children: [
               OutlinedButton(
                 onPressed: _pickDate,
-                child: Text(_due == null ? '日付を選ぶ' : '${_due!.month}/${_due!.day}'),
+                child: Text(
+                  _due == null ? copy.pickDate : '${_due!.month}/${_due!.day}',
+                ),
               ),
               OutlinedButton(
                 onPressed: _due == null ? null : _pickTime,
-                child: Text(_hasTime && _due != null ? '${_due!.hour}:${_due!.minute.toString().padLeft(2, '0')}' : '時刻を選ぶ'),
+                child: Text(
+                  _hasTime && _due != null
+                      ? '${_due!.hour}:${_due!.minute.toString().padLeft(2, '0')}'
+                      : copy.pickTime,
+                ),
               ),
               if (_due != null)
                 TextButton(
@@ -96,28 +110,32 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     _due = null;
                     _hasTime = false;
                   }),
-                  child: const Text('期限を消す'),
+                  child: Text(copy.clearDue),
                 ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text('優先度', style: TextStyle(fontWeight: FontWeight.w700)),
+          Text(
+            copy.priorityLabel,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 8),
           SegmentedButton<int>(
-            segments: const [
-              ButtonSegment(value: 0, label: Text('なし')),
-              ButtonSegment(value: 1, label: Text('低')),
-              ButtonSegment(value: 2, label: Text('中')),
-              ButtonSegment(value: 3, label: Text('高')),
+            segments: [
+              ButtonSegment(value: 0, label: Text(copy.none)),
+              ButtonSegment(value: 1, label: Text(copy.low)),
+              ButtonSegment(value: 2, label: Text(copy.mid)),
+              ButtonSegment(value: 3, label: Text(copy.high)),
             ],
             selected: {_priority},
-            onSelectionChanged: (value) => setState(() => _priority = value.first),
+            onSelectionChanged: (value) =>
+                setState(() => _priority = value.first),
           ),
           const SizedBox(height: 24),
           FilledButton(
             key: const Key('create-save'),
             onPressed: _saving ? null : _save,
-            child: const Text('作成する'),
+            child: Text(copy.createAction),
           ),
         ],
       ),
@@ -156,7 +174,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
     setState(() {
       _hasTime = true;
-      _due = DateTime(_due!.year, _due!.month, _due!.day, picked.hour, picked.minute);
+      _due = DateTime(
+        _due!.year,
+        _due!.month,
+        _due!.day,
+        picked.hour,
+        picked.minute,
+      );
     });
   }
 
@@ -177,7 +201,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       }
     } on FormatException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {

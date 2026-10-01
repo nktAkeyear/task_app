@@ -15,7 +15,16 @@ const listColors = <int>[
   0xFF5C4A8A,
 ];
 
-enum TaskBoard { inbox, today, upcoming, calendar, completed, search, settings, list }
+enum TaskBoard {
+  inbox,
+  today,
+  upcoming,
+  calendar,
+  completed,
+  search,
+  settings,
+  list,
+}
 
 class ListModel {
   const ListModel({
@@ -208,14 +217,20 @@ bool isOverdue(DateTime due, DateTime now, {required bool completed}) {
   return due.isBefore(start);
 }
 
-String? validateSyncUrl(String raw) {
+String? validateSyncUrl(String raw, {String language = 'ja'}) {
   final trimmed = raw.trim();
   if (trimmed.isEmpty) {
     return null;
   }
   final uri = Uri.tryParse(trimmed);
-  if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https') || uri.host.isEmpty) {
-    return 'http または https の URL を入力してください。';
+  if (uri == null ||
+      (uri.scheme != 'http' && uri.scheme != 'https') ||
+      uri.host.isEmpty) {
+    return switch (language) {
+      'en' => 'Enter an http or https URL.',
+      'ko' => 'http 또는 https URL을 입력하세요.',
+      _ => 'http または https の URL を入力してください。',
+    };
   }
   return null;
 }

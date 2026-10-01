@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../data/local_tools.dart';
 import '../domain/models.dart';
 
 /// OS notifications are best-effort. The in-app scheduler remains the source
@@ -15,7 +16,8 @@ class OsNotifications {
 
   static final OsNotifications instance = OsNotifications._();
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   bool _ready = false;
   bool _zoneReady = false;
 
@@ -52,12 +54,20 @@ class OsNotifications {
       _ready = granted ?? true;
     } catch (error, stack) {
       _ready = false;
-      FlutterError.reportError(FlutterErrorDetails(exception: error, stack: stack, library: 'tas notifications'));
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'tas notifications',
+        ),
+      );
     }
     if (!kIsWeb && Platform.isAndroid) {
       try {
         await _plugin
-            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
             ?.requestNotificationsPermission();
       } catch (_) {
         // The in-app banner still fires if the system prompt cannot be shown.
@@ -115,6 +125,50 @@ class OsNotifications {
       // Background delivery is optional. In-app reminders still fire.
     }
   }
+
+  Future<void> syncHabits(List<HabitView> habits) async {
+    if (!_ready || !_zoneReady) {
+      return;
+    }
+    for (final habit in habits) {
+      final id = _habitId(habit.id);
+      if (habit.archived || habit.reminderMinute == null) {
+        try {
+          await _plugin.cancel(id: id);
+        } catch (_) {}
+        continue;
+      }
+      final minute = habit.reminderMinute!;
+      final now = tz.TZDateTime.now(tz.local);
+      var when = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        minute ~/ 60,
+        minute % 60,
+      );
+      if (!when.isAfter(now)) {
+        when = when.add(const Duration(days: 1));
+      }
+      try {
+        await _plugin.zonedSchedule(
+          id: id,
+          title: 'Tas',
+          body: habit.name,
+          scheduledDate: when,
+          notificationDetails: _details(),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          matchDateTimeComponents: DateTimeComponents.time,
+          payload: habit.id,
+        );
+      } catch (_) {
+        // Habit reminders are optional. The check still lives in the app.
+      }
+    }
+  }
+
+  int _habitId(String id) => 0x40000000 | (id.hashCode & 0x3fffffff);
 
   NotificationDetails _details() {
     return const NotificationDetails(

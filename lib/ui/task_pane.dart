@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
-import '../domain/filters.dart';
 import '../domain/models.dart';
+import '../l10n/copy.dart';
 import 'widgets.dart';
 
 class TaskPane extends StatelessWidget {
@@ -43,8 +43,14 @@ class TaskPane extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = RepoScope.of(context);
     final listName = listId == null ? null : repo.listById(listId!)?.name;
-    final title = showTitle ? boardLabel(board, listName: listName) : '';
-    final tasks = repo.tasksFor(board: board, listId: listId, day: day, query: query);
+    final copy = Copy.of(context);
+    final title = showTitle ? copy.board(board, listName: listName) : '';
+    final tasks = repo.tasksFor(
+      board: board,
+      listId: listId,
+      day: day,
+      query: query,
+    );
     final manual = board == TaskBoard.inbox || board == TaskBoard.list;
     final width = MediaQuery.sizeOf(context).width;
     final swipe = width < 1080;
@@ -58,12 +64,16 @@ class TaskPane extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
                 ),
                 if (onCreate != null)
                   IconButton(
                     key: const Key('create-task'),
-                    tooltip: 'タスクを作成',
+                    tooltip: copy.createTask,
                     onPressed: onCreate,
                     icon: const Icon(Icons.add),
                   ),
@@ -78,12 +88,12 @@ class TaskPane extends StatelessWidget {
               controller: searchController,
               focusNode: searchFocus,
               decoration: InputDecoration(
-                hintText: 'タスク名とメモを検索',
+                hintText: copy.searchHint,
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: query.isEmpty
                     ? null
                     : IconButton(
-                        tooltip: '検索をクリア',
+                        tooltip: copy.clearSearch,
                         onPressed: () {
                           searchController.clear();
                           onQuery('');
@@ -97,8 +107,10 @@ class TaskPane extends StatelessWidget {
         Expanded(
           child: tasks.isEmpty
               ? EmptyHint(
-                  message: emptyCopy(board, query: query),
-                  icon: query.trim().isNotEmpty || board == TaskBoard.search ? Icons.search_off : Icons.task_alt,
+                  message: copy.empty(board, query: query),
+                  icon: query.trim().isNotEmpty || board == TaskBoard.search
+                      ? Icons.search_off
+                      : Icons.task_alt,
                 )
               : manual
               ? ReorderableListView.builder(
@@ -140,7 +152,12 @@ class TaskPane extends StatelessWidget {
           QuickAddBar(
             focusNode: quickAddFocus,
             onSubmit: (raw) async {
-              final id = await repo.quickAdd(raw, board: board, listId: listId, day: day);
+              final id = await repo.quickAdd(
+                raw,
+                board: board,
+                listId: listId,
+                day: day,
+              );
               onSelect(id);
             },
           ),
@@ -184,6 +201,7 @@ class _Entry extends StatelessWidget {
         }
       },
       subtitle: taskSubtitle(
+        context: context,
         task: task,
         listName: repo.listById(task.listId)?.name,
         tags: repo.tagsFor(task.id),
@@ -199,7 +217,11 @@ class _Entry extends StatelessWidget {
         if (showHandle && index != null)
           ReorderableDragStartListener(
             index: index!,
-            child: const SizedBox(width: 44, height: 44, child: Icon(Icons.drag_handle)),
+            child: const SizedBox(
+              width: 44,
+              height: 44,
+              child: Icon(Icons.drag_handle),
+            ),
           ),
       ],
     );
@@ -208,16 +230,24 @@ class _Entry extends StatelessWidget {
     }
     return Dismissible(
       key: ValueKey('swipe-${task.id}'),
-      background: const _SwipeBg(align: Alignment.centerLeft, color: Color(0xFF1C4E4A), icon: Icons.check, label: '完了'),
-      secondaryBackground: const _SwipeBg(
+      background: _SwipeBg(
+        align: Alignment.centerLeft,
+        color: const Color(0xFF1C4E4A),
+        icon: Icons.check,
+        label: Copy.of(context).swipeDone,
+      ),
+      secondaryBackground: _SwipeBg(
         align: Alignment.centerRight,
-        color: Color(0xFF9F1D1D),
+        color: const Color(0xFF9F1D1D),
         icon: Icons.delete_outline,
-        label: '削除',
+        label: Copy.of(context).delete,
       ),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
-          final stays = task.recurrence != 'none' && task.dueAt != null && !task.isCompleted;
+          final stays =
+              task.recurrence != 'none' &&
+              task.dueAt != null &&
+              !task.isCompleted;
           final message = await repo.toggleComplete(task.id);
           if (context.mounted) {
             showUndoSnack(context, message, repo.undo);
@@ -236,7 +266,12 @@ class _Entry extends StatelessWidget {
 }
 
 class _SwipeBg extends StatelessWidget {
-  const _SwipeBg({required this.align, required this.color, required this.icon, required this.label});
+  const _SwipeBg({
+    required this.align,
+    required this.color,
+    required this.icon,
+    required this.label,
+  });
 
   final Alignment align;
   final Color color;
@@ -254,7 +289,13 @@ class _SwipeBg extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.white),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );

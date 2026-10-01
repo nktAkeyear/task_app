@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../domain/models.dart';
+import '../l10n/copy.dart';
 
 class TasMark extends StatelessWidget {
   const TasMark({super.key, this.size = 28});
@@ -18,13 +19,21 @@ class TasMark extends StatelessWidget {
         color: scheme.primary,
         borderRadius: BorderRadius.circular(size * 0.28),
       ),
-      child: Icon(Icons.check_rounded, color: scheme.onPrimary, size: size * 0.72),
+      child: Icon(
+        Icons.check_rounded,
+        color: scheme.onPrimary,
+        size: size * 0.72,
+      ),
     );
   }
 }
 
 class EmptyHint extends StatelessWidget {
-  const EmptyHint({required this.message, super.key, this.icon = Icons.inbox_outlined});
+  const EmptyHint({
+    required this.message,
+    super.key,
+    this.icon = Icons.inbox_outlined,
+  });
 
   final String message;
   final IconData icon;
@@ -43,7 +52,11 @@ class EmptyHint extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(color: scheme.onSurface, fontSize: 15, height: 1.5),
+              style: TextStyle(
+                color: scheme.onSurface,
+                fontSize: 15,
+                height: 1.5,
+              ),
             ),
           ],
         ),
@@ -53,7 +66,11 @@ class EmptyHint extends StatelessWidget {
 }
 
 class QuickAddBar extends StatefulWidget {
-  const QuickAddBar({required this.onSubmit, required this.focusNode, super.key});
+  const QuickAddBar({
+    required this.onSubmit,
+    required this.focusNode,
+    super.key,
+  });
 
   final Future<void> Function(String raw) onSubmit;
   final FocusNode focusNode;
@@ -98,16 +115,16 @@ class _QuickAddBarState extends State<QuickAddBar> {
                 focusNode: widget.focusNode,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _submit(),
-                decoration: const InputDecoration(
-                  hintText: 'タスクを追加（例: 資料を送る 明日 10時）',
-                  prefixIcon: Icon(Icons.add_task_outlined),
+                decoration: InputDecoration(
+                  hintText: Copy.of(context).quickAddHint,
+                  prefixIcon: const Icon(Icons.add_task_outlined),
                 ),
               ),
             ),
             const SizedBox(width: 8),
             IconButton.filled(
               key: const Key('quick-add-submit'),
-              tooltip: '追加',
+              tooltip: Copy.of(context).add,
               onPressed: _submit,
               icon: const Icon(Icons.add),
             ),
@@ -138,25 +155,39 @@ class TaskTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final now = DateTime.now();
-    final overdue = task.dueAt != null && isOverdue(task.dueAt!, now, completed: task.isCompleted);
+    final overdue =
+        task.dueAt != null &&
+        isOverdue(task.dueAt!, now, completed: task.isCompleted);
     return Material(
-      color: selected ? scheme.primaryContainer.withValues(alpha: 0.55) : Colors.transparent,
+      color: selected
+          ? scheme.primaryContainer.withValues(alpha: 0.55)
+          : Colors.transparent,
       child: InkWell(
         onTap: onOpen,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 56),
           child: Row(
             children: [
-              Container(width: 3, height: 36, color: priorityColor(task.priority)),
+              Container(
+                width: 3,
+                height: 36,
+                color: priorityColor(task.priority),
+              ),
               SizedBox(
                 width: 44,
                 height: 44,
                 child: IconButton(
-                  tooltip: task.isCompleted ? '未完了に戻す' : '完了にする',
+                  tooltip: task.isCompleted
+                      ? Copy.of(context).markUndone
+                      : Copy.of(context).markDone,
                   onPressed: onToggle,
                   icon: Icon(
-                    task.isCompleted ? Icons.check_circle : Icons.circle_outlined,
-                    color: task.isCompleted ? scheme.primary : scheme.onSurfaceVariant,
+                    task.isCompleted
+                        ? Icons.check_circle
+                        : Icons.circle_outlined,
+                    color: task.isCompleted
+                        ? scheme.primary
+                        : scheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -174,8 +205,12 @@ class TaskTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           height: 1.3,
-                          decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                          color: task.isCompleted ? scheme.onSurfaceVariant : scheme.onSurface,
+                          decoration: task.isCompleted
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: task.isCompleted
+                              ? scheme.onSurfaceVariant
+                              : scheme.onSurface,
                         ),
                       ),
                       if (subtitle.isNotEmpty) ...[
@@ -184,7 +219,12 @@ class TaskTile extends StatelessWidget {
                           subtitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 13, color: overdue ? scheme.error : scheme.onSurfaceVariant),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: overdue
+                                ? scheme.error
+                                : scheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ],
@@ -212,24 +252,38 @@ Future<bool> confirmAction(
       title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
-        FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(action)),
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(Copy.of(context).cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(action),
+        ),
       ],
     ),
   );
   return result ?? false;
 }
 
-void showUndoSnack(BuildContext context, String message, Future<void> Function() undo) {
+void showUndoSnack(
+  BuildContext context,
+  String message,
+  Future<void> Function() undo,
+) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Text(message),
-      action: SnackBarAction(label: '元に戻す', onPressed: () => undo()),
+      action: SnackBarAction(
+        label: Copy.of(context).undo,
+        onPressed: () => undo(),
+      ),
     ),
   );
 }
 
 String taskSubtitle({
+  required BuildContext context,
   required TaskModel task,
   required String? listName,
   required List<TagModel> tags,
@@ -239,11 +293,12 @@ String taskSubtitle({
   required bool showList,
 }) {
   final parts = <String>[];
+  final copy = Copy.of(context);
   if (task.dueAt != null) {
-    parts.add(formatDue(task.dueAt!, hasTime: task.dueHasTime, now: now));
+    parts.add(copy.due(task.dueAt!, hasTime: task.dueHasTime, now: now));
   }
   if (task.priority > 0) {
-    parts.add(priorityLabel(task.priority));
+    parts.add(copy.priority(task.priority));
   }
   if (showList && listName != null) {
     parts.add(listName);
@@ -255,7 +310,7 @@ String taskSubtitle({
     parts.add('$checklistDone/$checklistTotal');
   }
   if (task.recurrence != 'none') {
-    parts.add(recurrenceLabel(task.recurrence));
+    parts.add(copy.recurrence(task.recurrence));
   }
   return parts.join('  ·  ');
 }

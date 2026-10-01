@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app.dart';
 import '../domain/filters.dart';
 import '../domain/models.dart';
+import '../l10n/copy.dart';
 import 'task_pane.dart';
 
 class CalendarPane extends StatelessWidget {
@@ -38,6 +39,7 @@ class CalendarPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = RepoScope.of(context);
+    final copy = Copy.of(context);
     final scheme = Theme.of(context).colorScheme;
     final first = DateTime(month.year, month.month);
     final leading = first.weekday - DateTime.monday;
@@ -59,23 +61,27 @@ class CalendarPane extends StatelessWidget {
           child: Row(
             children: [
               IconButton(
-                tooltip: '前の月',
+                tooltip: copy.prevMonth,
                 onPressed: () => onMonth(DateTime(month.year, month.month - 1)),
                 icon: const Icon(Icons.chevron_left),
               ),
               Expanded(
                 child: Text(
-                  '${month.year}年${month.month}月',
+                  copy.monthTitle(month),
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
               IconButton(
-                tooltip: '次の月',
+                tooltip: copy.nextMonth,
                 onPressed: () => onMonth(DateTime(month.year, month.month + 1)),
                 icon: const Icon(Icons.chevron_right),
               ),
-              TextButton(onPressed: () => onDay(startOfDay(DateTime.now())), child: const Text('今日')),
+              TextButton(
+                onPressed: () => onDay(startOfDay(DateTime.now())),
+                child: Text(copy.today),
+              ),
             ],
           ),
         ),
@@ -83,10 +89,16 @@ class CalendarPane extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: [
-              for (final label in const ['月', '火', '水', '木', '金', '土', '日'])
+              for (final label in copy.weekdays)
                 Expanded(
                   child: Center(
-                    child: Text(label, style: TextStyle(color: scheme.onSurfaceVariant, fontWeight: FontWeight.w700)),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -97,9 +109,16 @@ class CalendarPane extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: 42,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, mainAxisExtent: 48),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            mainAxisExtent: 48,
+          ),
           itemBuilder: (context, index) {
-            final date = DateTime(gridStart.year, gridStart.month, gridStart.day + index);
+            final date = DateTime(
+              gridStart.year,
+              gridStart.month,
+              gridStart.day + index,
+            );
             final inMonth = date.month == month.month;
             final selected = sameDay(date, day);
             final today = sameDay(date, DateTime.now());
@@ -113,7 +132,9 @@ class CalendarPane extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: selected ? scheme.primary : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
-                    border: today && !selected ? Border.all(color: scheme.primary) : null,
+                    border: today && !selected
+                        ? Border.all(color: scheme.primary)
+                        : null,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -126,7 +147,9 @@ class CalendarPane extends StatelessWidget {
                               : inMonth
                               ? scheme.onSurface
                               : scheme.onSurfaceVariant,
-                          fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w500,
                         ),
                       ),
                       if (count > 0)

@@ -4436,6 +4436,42 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, HabitRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<int> color = GeneratedColumn<int>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0xFF1F4B4A),
+  );
+  static const VerificationMeta _archivedMeta = const VerificationMeta(
+    'archived',
+  );
+  @override
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _reminderMinuteMeta = const VerificationMeta(
+    'reminderMinute',
+  );
+  @override
+  late final GeneratedColumn<int> reminderMinute = GeneratedColumn<int>(
+    'reminder_minute',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4443,6 +4479,9 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, HabitRow> {
     sortOrder,
     deleted,
     createdAt,
+    color,
+    archived,
+    reminderMinute,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4489,6 +4528,27 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, HabitRow> {
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    }
+    if (data.containsKey('archived')) {
+      context.handle(
+        _archivedMeta,
+        archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
+      );
+    }
+    if (data.containsKey('reminder_minute')) {
+      context.handle(
+        _reminderMinuteMeta,
+        reminderMinute.isAcceptableOrUnknown(
+          data['reminder_minute']!,
+          _reminderMinuteMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4518,6 +4578,18 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, HabitRow> {
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
       )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color'],
+      )!,
+      archived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}archived'],
+      )!,
+      reminderMinute: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reminder_minute'],
+      ),
     );
   }
 
@@ -4533,12 +4605,18 @@ class HabitRow extends DataClass implements Insertable<HabitRow> {
   final int sortOrder;
   final bool deleted;
   final int createdAt;
+  final int color;
+  final bool archived;
+  final int? reminderMinute;
   const HabitRow({
     required this.id,
     required this.name,
     required this.sortOrder,
     required this.deleted,
     required this.createdAt,
+    required this.color,
+    required this.archived,
+    this.reminderMinute,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4548,6 +4626,11 @@ class HabitRow extends DataClass implements Insertable<HabitRow> {
     map['sort_order'] = Variable<int>(sortOrder);
     map['deleted'] = Variable<bool>(deleted);
     map['created_at'] = Variable<int>(createdAt);
+    map['color'] = Variable<int>(color);
+    map['archived'] = Variable<bool>(archived);
+    if (!nullToAbsent || reminderMinute != null) {
+      map['reminder_minute'] = Variable<int>(reminderMinute);
+    }
     return map;
   }
 
@@ -4558,6 +4641,11 @@ class HabitRow extends DataClass implements Insertable<HabitRow> {
       sortOrder: Value(sortOrder),
       deleted: Value(deleted),
       createdAt: Value(createdAt),
+      color: Value(color),
+      archived: Value(archived),
+      reminderMinute: reminderMinute == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderMinute),
     );
   }
 
@@ -4572,6 +4660,9 @@ class HabitRow extends DataClass implements Insertable<HabitRow> {
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
+      color: serializer.fromJson<int>(json['color']),
+      archived: serializer.fromJson<bool>(json['archived']),
+      reminderMinute: serializer.fromJson<int?>(json['reminderMinute']),
     );
   }
   @override
@@ -4583,6 +4674,9 @@ class HabitRow extends DataClass implements Insertable<HabitRow> {
       'sortOrder': serializer.toJson<int>(sortOrder),
       'deleted': serializer.toJson<bool>(deleted),
       'createdAt': serializer.toJson<int>(createdAt),
+      'color': serializer.toJson<int>(color),
+      'archived': serializer.toJson<bool>(archived),
+      'reminderMinute': serializer.toJson<int?>(reminderMinute),
     };
   }
 
@@ -4592,12 +4686,20 @@ class HabitRow extends DataClass implements Insertable<HabitRow> {
     int? sortOrder,
     bool? deleted,
     int? createdAt,
+    int? color,
+    bool? archived,
+    Value<int?> reminderMinute = const Value.absent(),
   }) => HabitRow(
     id: id ?? this.id,
     name: name ?? this.name,
     sortOrder: sortOrder ?? this.sortOrder,
     deleted: deleted ?? this.deleted,
     createdAt: createdAt ?? this.createdAt,
+    color: color ?? this.color,
+    archived: archived ?? this.archived,
+    reminderMinute: reminderMinute.present
+        ? reminderMinute.value
+        : this.reminderMinute,
   );
   HabitRow copyWithCompanion(HabitsCompanion data) {
     return HabitRow(
@@ -4606,6 +4708,11 @@ class HabitRow extends DataClass implements Insertable<HabitRow> {
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      color: data.color.present ? data.color.value : this.color,
+      archived: data.archived.present ? data.archived.value : this.archived,
+      reminderMinute: data.reminderMinute.present
+          ? data.reminderMinute.value
+          : this.reminderMinute,
     );
   }
 
@@ -4616,13 +4723,25 @@ class HabitRow extends DataClass implements Insertable<HabitRow> {
           ..write('name: $name, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('deleted: $deleted, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('color: $color, ')
+          ..write('archived: $archived, ')
+          ..write('reminderMinute: $reminderMinute')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, sortOrder, deleted, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    sortOrder,
+    deleted,
+    createdAt,
+    color,
+    archived,
+    reminderMinute,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4631,7 +4750,10 @@ class HabitRow extends DataClass implements Insertable<HabitRow> {
           other.name == this.name &&
           other.sortOrder == this.sortOrder &&
           other.deleted == this.deleted &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.color == this.color &&
+          other.archived == this.archived &&
+          other.reminderMinute == this.reminderMinute);
 }
 
 class HabitsCompanion extends UpdateCompanion<HabitRow> {
@@ -4640,6 +4762,9 @@ class HabitsCompanion extends UpdateCompanion<HabitRow> {
   final Value<int> sortOrder;
   final Value<bool> deleted;
   final Value<int> createdAt;
+  final Value<int> color;
+  final Value<bool> archived;
+  final Value<int?> reminderMinute;
   final Value<int> rowid;
   const HabitsCompanion({
     this.id = const Value.absent(),
@@ -4647,6 +4772,9 @@ class HabitsCompanion extends UpdateCompanion<HabitRow> {
     this.sortOrder = const Value.absent(),
     this.deleted = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.color = const Value.absent(),
+    this.archived = const Value.absent(),
+    this.reminderMinute = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   HabitsCompanion.insert({
@@ -4655,6 +4783,9 @@ class HabitsCompanion extends UpdateCompanion<HabitRow> {
     this.sortOrder = const Value.absent(),
     this.deleted = const Value.absent(),
     required int createdAt,
+    this.color = const Value.absent(),
+    this.archived = const Value.absent(),
+    this.reminderMinute = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -4665,6 +4796,9 @@ class HabitsCompanion extends UpdateCompanion<HabitRow> {
     Expression<int>? sortOrder,
     Expression<bool>? deleted,
     Expression<int>? createdAt,
+    Expression<int>? color,
+    Expression<bool>? archived,
+    Expression<int>? reminderMinute,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4673,6 +4807,9 @@ class HabitsCompanion extends UpdateCompanion<HabitRow> {
       if (sortOrder != null) 'sort_order': sortOrder,
       if (deleted != null) 'deleted': deleted,
       if (createdAt != null) 'created_at': createdAt,
+      if (color != null) 'color': color,
+      if (archived != null) 'archived': archived,
+      if (reminderMinute != null) 'reminder_minute': reminderMinute,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4683,6 +4820,9 @@ class HabitsCompanion extends UpdateCompanion<HabitRow> {
     Value<int>? sortOrder,
     Value<bool>? deleted,
     Value<int>? createdAt,
+    Value<int>? color,
+    Value<bool>? archived,
+    Value<int?>? reminderMinute,
     Value<int>? rowid,
   }) {
     return HabitsCompanion(
@@ -4691,6 +4831,9 @@ class HabitsCompanion extends UpdateCompanion<HabitRow> {
       sortOrder: sortOrder ?? this.sortOrder,
       deleted: deleted ?? this.deleted,
       createdAt: createdAt ?? this.createdAt,
+      color: color ?? this.color,
+      archived: archived ?? this.archived,
+      reminderMinute: reminderMinute ?? this.reminderMinute,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4713,6 +4856,15 @@ class HabitsCompanion extends UpdateCompanion<HabitRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
+    if (color.present) {
+      map['color'] = Variable<int>(color.value);
+    }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
+    }
+    if (reminderMinute.present) {
+      map['reminder_minute'] = Variable<int>(reminderMinute.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4727,6 +4879,9 @@ class HabitsCompanion extends UpdateCompanion<HabitRow> {
           ..write('sortOrder: $sortOrder, ')
           ..write('deleted: $deleted, ')
           ..write('createdAt: $createdAt, ')
+          ..write('color: $color, ')
+          ..write('archived: $archived, ')
+          ..write('reminderMinute: $reminderMinute, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5505,6 +5660,16 @@ class $PomodoroStatesTable extends PomodoroStates
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _phaseMeta = const VerificationMeta('phase');
+  @override
+  late final GeneratedColumn<String> phase = GeneratedColumn<String>(
+    'phase',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('focus'),
+  );
   static const VerificationMeta _remainingMsMeta = const VerificationMeta(
     'remainingMs',
   );
@@ -5547,6 +5712,7 @@ class $PomodoroStatesTable extends PomodoroStates
     id,
     taskId,
     focus,
+    phase,
     remainingMs,
     running,
     anchorMs,
@@ -5576,6 +5742,12 @@ class $PomodoroStatesTable extends PomodoroStates
       context.handle(
         _focusMeta,
         focus.isAcceptableOrUnknown(data['focus']!, _focusMeta),
+      );
+    }
+    if (data.containsKey('phase')) {
+      context.handle(
+        _phaseMeta,
+        phase.isAcceptableOrUnknown(data['phase']!, _phaseMeta),
       );
     }
     if (data.containsKey('remaining_ms')) {
@@ -5622,6 +5794,10 @@ class $PomodoroStatesTable extends PomodoroStates
         DriftSqlType.bool,
         data['${effectivePrefix}focus'],
       )!,
+      phase: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phase'],
+      )!,
       remainingMs: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}remaining_ms'],
@@ -5648,6 +5824,7 @@ class PomodoroStateRow extends DataClass
   final int id;
   final String? taskId;
   final bool focus;
+  final String phase;
   final int remainingMs;
   final bool running;
   final int? anchorMs;
@@ -5655,6 +5832,7 @@ class PomodoroStateRow extends DataClass
     required this.id,
     this.taskId,
     required this.focus,
+    required this.phase,
     required this.remainingMs,
     required this.running,
     this.anchorMs,
@@ -5667,6 +5845,7 @@ class PomodoroStateRow extends DataClass
       map['task_id'] = Variable<String>(taskId);
     }
     map['focus'] = Variable<bool>(focus);
+    map['phase'] = Variable<String>(phase);
     map['remaining_ms'] = Variable<int>(remainingMs);
     map['running'] = Variable<bool>(running);
     if (!nullToAbsent || anchorMs != null) {
@@ -5682,6 +5861,7 @@ class PomodoroStateRow extends DataClass
           ? const Value.absent()
           : Value(taskId),
       focus: Value(focus),
+      phase: Value(phase),
       remainingMs: Value(remainingMs),
       running: Value(running),
       anchorMs: anchorMs == null && nullToAbsent
@@ -5699,6 +5879,7 @@ class PomodoroStateRow extends DataClass
       id: serializer.fromJson<int>(json['id']),
       taskId: serializer.fromJson<String?>(json['taskId']),
       focus: serializer.fromJson<bool>(json['focus']),
+      phase: serializer.fromJson<String>(json['phase']),
       remainingMs: serializer.fromJson<int>(json['remainingMs']),
       running: serializer.fromJson<bool>(json['running']),
       anchorMs: serializer.fromJson<int?>(json['anchorMs']),
@@ -5711,6 +5892,7 @@ class PomodoroStateRow extends DataClass
       'id': serializer.toJson<int>(id),
       'taskId': serializer.toJson<String?>(taskId),
       'focus': serializer.toJson<bool>(focus),
+      'phase': serializer.toJson<String>(phase),
       'remainingMs': serializer.toJson<int>(remainingMs),
       'running': serializer.toJson<bool>(running),
       'anchorMs': serializer.toJson<int?>(anchorMs),
@@ -5721,6 +5903,7 @@ class PomodoroStateRow extends DataClass
     int? id,
     Value<String?> taskId = const Value.absent(),
     bool? focus,
+    String? phase,
     int? remainingMs,
     bool? running,
     Value<int?> anchorMs = const Value.absent(),
@@ -5728,6 +5911,7 @@ class PomodoroStateRow extends DataClass
     id: id ?? this.id,
     taskId: taskId.present ? taskId.value : this.taskId,
     focus: focus ?? this.focus,
+    phase: phase ?? this.phase,
     remainingMs: remainingMs ?? this.remainingMs,
     running: running ?? this.running,
     anchorMs: anchorMs.present ? anchorMs.value : this.anchorMs,
@@ -5737,6 +5921,7 @@ class PomodoroStateRow extends DataClass
       id: data.id.present ? data.id.value : this.id,
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
       focus: data.focus.present ? data.focus.value : this.focus,
+      phase: data.phase.present ? data.phase.value : this.phase,
       remainingMs: data.remainingMs.present
           ? data.remainingMs.value
           : this.remainingMs,
@@ -5751,6 +5936,7 @@ class PomodoroStateRow extends DataClass
           ..write('id: $id, ')
           ..write('taskId: $taskId, ')
           ..write('focus: $focus, ')
+          ..write('phase: $phase, ')
           ..write('remainingMs: $remainingMs, ')
           ..write('running: $running, ')
           ..write('anchorMs: $anchorMs')
@@ -5760,7 +5946,7 @@ class PomodoroStateRow extends DataClass
 
   @override
   int get hashCode =>
-      Object.hash(id, taskId, focus, remainingMs, running, anchorMs);
+      Object.hash(id, taskId, focus, phase, remainingMs, running, anchorMs);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5768,6 +5954,7 @@ class PomodoroStateRow extends DataClass
           other.id == this.id &&
           other.taskId == this.taskId &&
           other.focus == this.focus &&
+          other.phase == this.phase &&
           other.remainingMs == this.remainingMs &&
           other.running == this.running &&
           other.anchorMs == this.anchorMs);
@@ -5777,6 +5964,7 @@ class PomodoroStatesCompanion extends UpdateCompanion<PomodoroStateRow> {
   final Value<int> id;
   final Value<String?> taskId;
   final Value<bool> focus;
+  final Value<String> phase;
   final Value<int> remainingMs;
   final Value<bool> running;
   final Value<int?> anchorMs;
@@ -5784,6 +5972,7 @@ class PomodoroStatesCompanion extends UpdateCompanion<PomodoroStateRow> {
     this.id = const Value.absent(),
     this.taskId = const Value.absent(),
     this.focus = const Value.absent(),
+    this.phase = const Value.absent(),
     this.remainingMs = const Value.absent(),
     this.running = const Value.absent(),
     this.anchorMs = const Value.absent(),
@@ -5792,6 +5981,7 @@ class PomodoroStatesCompanion extends UpdateCompanion<PomodoroStateRow> {
     this.id = const Value.absent(),
     this.taskId = const Value.absent(),
     this.focus = const Value.absent(),
+    this.phase = const Value.absent(),
     required int remainingMs,
     this.running = const Value.absent(),
     this.anchorMs = const Value.absent(),
@@ -5800,6 +5990,7 @@ class PomodoroStatesCompanion extends UpdateCompanion<PomodoroStateRow> {
     Expression<int>? id,
     Expression<String>? taskId,
     Expression<bool>? focus,
+    Expression<String>? phase,
     Expression<int>? remainingMs,
     Expression<bool>? running,
     Expression<int>? anchorMs,
@@ -5808,6 +5999,7 @@ class PomodoroStatesCompanion extends UpdateCompanion<PomodoroStateRow> {
       if (id != null) 'id': id,
       if (taskId != null) 'task_id': taskId,
       if (focus != null) 'focus': focus,
+      if (phase != null) 'phase': phase,
       if (remainingMs != null) 'remaining_ms': remainingMs,
       if (running != null) 'running': running,
       if (anchorMs != null) 'anchor_ms': anchorMs,
@@ -5818,6 +6010,7 @@ class PomodoroStatesCompanion extends UpdateCompanion<PomodoroStateRow> {
     Value<int>? id,
     Value<String?>? taskId,
     Value<bool>? focus,
+    Value<String>? phase,
     Value<int>? remainingMs,
     Value<bool>? running,
     Value<int?>? anchorMs,
@@ -5826,6 +6019,7 @@ class PomodoroStatesCompanion extends UpdateCompanion<PomodoroStateRow> {
       id: id ?? this.id,
       taskId: taskId ?? this.taskId,
       focus: focus ?? this.focus,
+      phase: phase ?? this.phase,
       remainingMs: remainingMs ?? this.remainingMs,
       running: running ?? this.running,
       anchorMs: anchorMs ?? this.anchorMs,
@@ -5843,6 +6037,9 @@ class PomodoroStatesCompanion extends UpdateCompanion<PomodoroStateRow> {
     }
     if (focus.present) {
       map['focus'] = Variable<bool>(focus.value);
+    }
+    if (phase.present) {
+      map['phase'] = Variable<String>(phase.value);
     }
     if (remainingMs.present) {
       map['remaining_ms'] = Variable<int>(remainingMs.value);
@@ -5862,6 +6059,7 @@ class PomodoroStatesCompanion extends UpdateCompanion<PomodoroStateRow> {
           ..write('id: $id, ')
           ..write('taskId: $taskId, ')
           ..write('focus: $focus, ')
+          ..write('phase: $phase, ')
           ..write('remainingMs: $remainingMs, ')
           ..write('running: $running, ')
           ..write('anchorMs: $anchorMs')
@@ -8161,6 +8359,9 @@ typedef $$HabitsTableCreateCompanionBuilder = HabitsCompanion Function({
   Value<int> sortOrder,
   Value<bool> deleted,
   required int createdAt,
+  Value<int> color,
+  Value<bool> archived,
+  Value<int?> reminderMinute,
   Value<int> rowid,
 });
 typedef $$HabitsTableUpdateCompanionBuilder = HabitsCompanion Function({
@@ -8169,6 +8370,9 @@ typedef $$HabitsTableUpdateCompanionBuilder = HabitsCompanion Function({
   Value<int> sortOrder,
   Value<bool> deleted,
   Value<int> createdAt,
+  Value<int> color,
+  Value<bool> archived,
+  Value<int?> reminderMinute,
   Value<int> rowid,
 });
 
@@ -8203,6 +8407,21 @@ class $$HabitsTableFilterComposer
 
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reminderMinute => $composableBuilder(
+    column: $table.reminderMinute,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8240,6 +8459,21 @@ class $$HabitsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get reminderMinute => $composableBuilder(
+    column: $table.reminderMinute,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$HabitsTableAnnotationComposer
@@ -8265,6 +8499,17 @@ class $$HabitsTableAnnotationComposer
 
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => column);
+
+  GeneratedColumn<int> get reminderMinute => $composableBuilder(
+    column: $table.reminderMinute,
+    builder: (column) => column,
+  );
 }
 
 class $$HabitsTableTableManager
@@ -8300,6 +8545,9 @@ class $$HabitsTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<int> color = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
+                Value<int?> reminderMinute = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => HabitsCompanion(
                 id: id,
@@ -8307,6 +8555,9 @@ class $$HabitsTableTableManager
                 sortOrder: sortOrder,
                 deleted: deleted,
                 createdAt: createdAt,
+                color: color,
+                archived: archived,
+                reminderMinute: reminderMinute,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -8316,6 +8567,9 @@ class $$HabitsTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 required int createdAt,
+                Value<int> color = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
+                Value<int?> reminderMinute = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => HabitsCompanion.insert(
                 id: id,
@@ -8323,6 +8577,9 @@ class $$HabitsTableTableManager
                 sortOrder: sortOrder,
                 deleted: deleted,
                 createdAt: createdAt,
+                color: color,
+                archived: archived,
+                reminderMinute: reminderMinute,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -8861,6 +9118,7 @@ typedef $$PomodoroStatesTableCreateCompanionBuilder =
       Value<int> id,
       Value<String?> taskId,
       Value<bool> focus,
+      Value<String> phase,
       required int remainingMs,
       Value<bool> running,
       Value<int?> anchorMs,
@@ -8870,6 +9128,7 @@ typedef $$PomodoroStatesTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String?> taskId,
       Value<bool> focus,
+      Value<String> phase,
       Value<int> remainingMs,
       Value<bool> running,
       Value<int?> anchorMs,
@@ -8896,6 +9155,11 @@ class $$PomodoroStatesTableFilterComposer
 
   ColumnFilters<bool> get focus => $composableBuilder(
     column: $table.focus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phase => $composableBuilder(
+    column: $table.phase,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8939,6 +9203,11 @@ class $$PomodoroStatesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get phase => $composableBuilder(
+    column: $table.phase,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get remainingMs => $composableBuilder(
     column: $table.remainingMs,
     builder: (column) => ColumnOrderings(column),
@@ -8972,6 +9241,9 @@ class $$PomodoroStatesTableAnnotationComposer
 
   GeneratedColumn<bool> get focus =>
       $composableBuilder(column: $table.focus, builder: (column) => column);
+
+  GeneratedColumn<String> get phase =>
+      $composableBuilder(column: $table.phase, builder: (column) => column);
 
   GeneratedColumn<int> get remainingMs => $composableBuilder(
     column: $table.remainingMs,
@@ -9025,6 +9297,7 @@ class $$PomodoroStatesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String?> taskId = const Value.absent(),
                 Value<bool> focus = const Value.absent(),
+                Value<String> phase = const Value.absent(),
                 Value<int> remainingMs = const Value.absent(),
                 Value<bool> running = const Value.absent(),
                 Value<int?> anchorMs = const Value.absent(),
@@ -9032,6 +9305,7 @@ class $$PomodoroStatesTableTableManager
                 id: id,
                 taskId: taskId,
                 focus: focus,
+                phase: phase,
                 remainingMs: remainingMs,
                 running: running,
                 anchorMs: anchorMs,
@@ -9041,6 +9315,7 @@ class $$PomodoroStatesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String?> taskId = const Value.absent(),
                 Value<bool> focus = const Value.absent(),
+                Value<String> phase = const Value.absent(),
                 required int remainingMs,
                 Value<bool> running = const Value.absent(),
                 Value<int?> anchorMs = const Value.absent(),
@@ -9048,6 +9323,7 @@ class $$PomodoroStatesTableTableManager
                 id: id,
                 taskId: taskId,
                 focus: focus,
+                phase: phase,
                 remainingMs: remainingMs,
                 running: running,
                 anchorMs: anchorMs,
