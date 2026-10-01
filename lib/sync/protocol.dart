@@ -32,37 +32,24 @@ class SyncEntity {
     required this.id,
     required this.fields,
     this.deletedHlc,
+    this.restoredHlc,
   });
 
   final String type;
   final String id;
   final Map<String, FieldValue> fields;
   final Hlc? deletedHlc;
+  final Hlc? restoredHlc;
 
-  /// A tombstone wins when its wall clock is greater than or equal to every
-  /// field update. A strictly newer field resurrects the entity.
-  bool get isDeleted {
-    final tombstone = deletedHlc;
-    if (tombstone == null) {
-      return false;
-    }
-    Hlc? newest;
-    for (final field in fields.values) {
-      if (newest == null || field.hlc.compareWall(newest) > 0) {
-        newest = field.hlc;
-      }
-    }
-    if (newest == null) {
-      return true;
-    }
-    return tombstone.compareWall(newest) >= 0;
-  }
+  /// True whenever a tombstone is still set. A field edit does not clear it.
+  bool get isDeleted => deletedHlc != null;
 
   Map<String, Object?> toJson() => {
     'type': type,
     'id': id,
     'fields': fields.map((key, value) => MapEntry(key, value.toJson())),
     'deletedHlc': deletedHlc?.toJson(),
+    'restoredHlc': restoredHlc?.toJson(),
   };
 
   factory SyncEntity.fromJson(Map<String, Object?> json) {
@@ -79,12 +66,16 @@ class SyncEntity {
       }
     }
     final deleted = json['deletedHlc'];
+    final restored = json['restoredHlc'];
     return SyncEntity(
       type: json['type']! as String,
       id: json['id']! as String,
       fields: fields,
       deletedHlc: deleted is Map
           ? Hlc.fromJson(deleted.map((key, value) => MapEntry(key.toString(), value)))
+          : null,
+      restoredHlc: restored is Map
+          ? Hlc.fromJson(restored.map((key, value) => MapEntry(key.toString(), value)))
           : null,
     );
   }
@@ -99,6 +90,7 @@ class SyncOp {
     required this.fields,
     required this.createdAt,
     this.deleteHlc,
+    this.restoreHlc,
   });
 
   final String opId;
@@ -108,6 +100,7 @@ class SyncOp {
   final Map<String, FieldValue> fields;
   final int createdAt;
   final Hlc? deleteHlc;
+  final Hlc? restoreHlc;
 
   SyncEntity toEntity() {
     return SyncEntity(
@@ -115,6 +108,7 @@ class SyncOp {
       id: entityId,
       fields: fields,
       deletedHlc: deleteHlc,
+      restoredHlc: restoreHlc,
     );
   }
 
@@ -126,6 +120,7 @@ class SyncOp {
     'fields': fields.map((key, value) => MapEntry(key, value.toJson())),
     'createdAt': createdAt,
     'deleteHlc': deleteHlc?.toJson(),
+    'restoreHlc': restoreHlc?.toJson(),
   };
 
   factory SyncOp.fromJson(Map<String, Object?> json) {
@@ -142,6 +137,7 @@ class SyncOp {
       }
     }
     final deleted = json['deleteHlc'];
+    final restored = json['restoreHlc'];
     return SyncOp(
       opId: json['opId']! as String,
       entityType: json['entityType']! as String,
@@ -151,6 +147,9 @@ class SyncOp {
       fields: fields,
       deleteHlc: deleted is Map
           ? Hlc.fromJson(deleted.map((key, value) => MapEntry(key.toString(), value)))
+          : null,
+      restoreHlc: restored is Map
+          ? Hlc.fromJson(restored.map((key, value) => MapEntry(key.toString(), value)))
           : null,
     );
   }
@@ -194,11 +193,10 @@ class SyncBatchResult {
 
 /// Field-level last-writer-wins.
 ///
-/// Non-overlapping fields are both kept. The same field keeps the higher HLC,
-/// with device id breaking a wall-clock tie. A delete tombstone wins when its
-/// wall clock is greater than or equal to the newest field; a strictly newer
-/// field resurrects the row. On an exact wall-clock tie, delete wins even if
-/// the update has the higher device id.
+/// Non-overlapping fields are both kept. The same field keeps the higher clock
+/// (physical, then logical, then device id). A delete keeps its field values.
+/// A field edit never clears a tombstone. An explicit restore clears the
+/// tombstone only when its clock is strictly newer than the delete.
 SyncEntity mergeEntities(SyncEntity local, SyncEntity remote) {
   final fields = <String, FieldValue>{};
   final keys = <String>{...local.fields.keys, ...remote.fields.keys};
@@ -216,10 +214,10 @@ SyncEntity mergeEntities(SyncEntity local, SyncEntity remote) {
     }
   }
 
-  var deleted = local.deletedHlc;
-  final remoteDeleted = remote.deletedHlc;
-  if (remoteDeleted != null && (deleted == null || remoteDeleted.compareTo(deleted) > 0)) {
-    deleted = remoteDeleted;
+  var deleted = _laterClock(local.deletedHlc, remote.deletedHlc);
+  final restored = _laterClock(local.restoredHlc, remote.restoredHlc);
+  if (restored != null && (deleted == null || restored.compareTo(deleted) > 0)) {
+    deleted = null;
   }
 
   return SyncEntity(
@@ -227,5 +225,16 @@ SyncEntity mergeEntities(SyncEntity local, SyncEntity remote) {
     id: local.id.isNotEmpty ? local.id : remote.id,
     fields: fields,
     deletedHlc: deleted,
+    restoredHlc: restored,
   );
+}
+
+Hlc? _laterClock(Hlc? left, Hlc? right) {
+  if (left == null) {
+    return right;
+  }
+  if (right == null) {
+    return left;
+  }
+  return right.compareTo(left) > 0 ? right : left;
 }

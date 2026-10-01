@@ -31,7 +31,7 @@ void main() {
     expect(repo.taskById(id)!.notes, '低脂肪');
   });
 
-  test('remote field merge, delete, and resurrection follow the HLC rules', () async {
+  test('remote field merge keeps a delete, and only an explicit restore clears it', () async {
     var now = DateTime(2026, 6, 1, 9);
     final repo = await _repo(deviceId: 'local', at: now, clock: () => now);
     final id = await repo.quickAdd('下書き', board: TaskBoard.inbox);
@@ -66,20 +66,69 @@ void main() {
       ),
     ]);
     expect(repo.taskById(id)!.deleted, isTrue);
+    expect(repo.taskById(id)!.title, '下書き');
+    expect(repo.taskById(id)!.notes, '追記');
 
-    final revive = Hlc(deleteClock.physical + 1, 0, 'zzz');
+    final edited = Hlc(deleteClock.physical + 1, 0, 'zzz');
     await repo.applyRemoteOps([
       SyncOp(
-        opId: 'remote-revive',
+        opId: 'remote-edit',
         entityType: entityTask,
         entityId: id,
         deviceId: 'zzz',
-        createdAt: revive.physical,
-        fields: {'title': FieldValue('復活', revive)},
+        createdAt: edited.physical,
+        fields: {'title': FieldValue('更新', edited)},
+      ),
+    ]);
+    expect(repo.taskById(id)!.deleted, isTrue);
+    expect(repo.taskById(id)!.title, '更新');
+    expect(repo.taskById(id)!.notes, '追記');
+
+    final restore = Hlc(edited.physical + 1, 0, 'local');
+    await repo.applyRemoteOps([
+      SyncOp(
+        opId: 'remote-restore',
+        entityType: entityTask,
+        entityId: id,
+        deviceId: 'local',
+        createdAt: restore.physical,
+        fields: const {},
+        restoreHlc: restore,
       ),
     ]);
     expect(repo.taskById(id)!.deleted, isFalse);
-    expect(repo.taskById(id)!.title, '復活');
+    expect(repo.taskById(id)!.title, '更新');
+    expect(repo.taskById(id)!.notes, '追記');
+  });
+
+  test('undo after delete restores the task and syncs that restore', () async {
+    final log = SyncLog();
+    final client = SyncClient(
+      handler: ({required baseUrl, required deviceId, required cursor, required ops}) async {
+        return log.pushPull(since: cursor, incoming: ops);
+      },
+    );
+    final now = DateTime(2026, 7, 1, 9);
+    final repo = await _repo(deviceId: 'local', at: now, client: client);
+    final other = await _repo(deviceId: 'other', at: now, client: client);
+    final id = await repo.quickAdd('戻す', board: TaskBoard.inbox);
+    await repo.deleteTask(id);
+    expect(repo.taskById(id)!.deleted, isTrue);
+    await repo.undo();
+    expect(repo.taskById(id)!.deleted, isFalse);
+    expect(repo.taskById(id)!.title, '戻す');
+
+    final ops = await repo.pendingOps();
+    final delete = ops.lastWhere((op) => op.entityId == id && op.deleteHlc != null);
+    final restore = ops.lastWhere((op) => op.entityId == id && op.restoreHlc != null);
+    expect(restore.restoreHlc!.compareTo(delete.deleteHlc!), greaterThan(0));
+    expect(restore.fields, isEmpty);
+
+    const url = 'http://127.0.0.1:8787';
+    await repo.setSyncUrl(url);
+    await other.setSyncUrl(url);
+    expect(other.taskById(id)!.deleted, isFalse);
+    expect(other.taskById(id)!.title, '戻す');
   });
 
   test('batch sync merges non-overlapping edits and retries are idempotent', () async {
@@ -144,6 +193,8 @@ void main() {
 
     final merged = mergeEntities(update.toEntity(), delete.toEntity());
     expect(merged.isDeleted, isTrue);
+    expect(merged.deletedHlc, delete.deleteHlc);
+    expect(merged.fields['title']!.value, '更新');
     // Silence unused repo warning if the first pair is only for setup.
     expect(low.deviceId, 'aaa');
   });

@@ -19,6 +19,7 @@ class TaskLists extends Table {
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedHlc => text().nullable()();
+  TextColumn get restoredHlc => text().nullable()();
   TextColumn get fieldClocks => text().withDefault(const Constant('{}'))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
@@ -44,6 +45,7 @@ class Tasks extends Table {
   IntColumn get completedAt => integer().nullable()();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedHlc => text().nullable()();
+  TextColumn get restoredHlc => text().nullable()();
   TextColumn get fieldClocks => text().withDefault(const Constant('{}'))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
@@ -59,6 +61,7 @@ class Tags extends Table {
   IntColumn get color => integer()();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedHlc => text().nullable()();
+  TextColumn get restoredHlc => text().nullable()();
   TextColumn get fieldClocks => text().withDefault(const Constant('{}'))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
@@ -77,6 +80,7 @@ class TaskTags extends Table {
   TextColumn get tagId => text()();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedHlc => text().nullable()();
+  TextColumn get restoredHlc => text().nullable()();
   TextColumn get fieldClocks => text().withDefault(const Constant('{}'))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
@@ -97,6 +101,7 @@ class ChecklistItems extends Table {
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedHlc => text().nullable()();
+  TextColumn get restoredHlc => text().nullable()();
   TextColumn get fieldClocks => text().withDefault(const Constant('{}'))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
@@ -168,5 +173,18 @@ class TasDatabase extends _$TasDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.addColumn(taskLists, taskLists.restoredHlc);
+        await migrator.addColumn(tasks, tasks.restoredHlc);
+        await migrator.addColumn(tags, tags.restoredHlc);
+        await migrator.addColumn(taskTags, taskTags.restoredHlc);
+        await migrator.addColumn(checklistItems, checklistItems.restoredHlc);
+      }
+    },
+  );
 }

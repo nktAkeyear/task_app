@@ -63,9 +63,10 @@ Conflict policy, applied per entity:
 
 - Each field carries a hybrid logical clock `(physical, logical, deviceId)`.
 - Non-overlapping fields merge.
-- For two updates of the same field, the higher clock wins. Equal wall time uses the higher device id.
-- Deletes are tombstones. Compare wall time only (physical, then logical). If the delete clock is greater than or equal to every field clock, the delete wins. A strictly newer field clock resurrects the entity and keeps older fields.
-- Exact clock ties: delete wins, then the higher device id.
+- For two updates of the same field, the higher clock wins: physical time, then the logical counter, then device id.
+- A delete is a tombstone and does not discard field values. A field edit does not clear the tombstone or resurrect the entity. The entity is deleted whenever `deletedHlc` is set.
+- A restore is explicit. It clears the tombstone only when its restore clock is strictly newer than the delete, using the same clock order. An ordinary field edit is not a restore. Undo after delete writes that restore and syncs it.
+- Two delete clocks, or two restore clocks, keep the higher clock.
 - Push the outbox and pull changes since a cursor. Operations are idempotent and safe to retry.
 
 ## Tests

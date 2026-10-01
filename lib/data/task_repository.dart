@@ -291,7 +291,7 @@ class TaskRepository extends ChangeNotifier {
         return 'タスクが見つかりません';
       }
       await _tombstone(entityTask, id, row);
-      _undo = _Undo(() => _commit(() => _writeTaskFields(id, {'title': row.title})));
+      _undo = _Undo(() => _commit(() => _restore(entityTask, id)));
       return '削除しました';
     });
   }
@@ -642,6 +642,9 @@ class TaskRepository extends ChangeNotifier {
         if (remote.deletedHlc != null) {
           _clock.observe(remote.deletedHlc!);
         }
+        if (remote.restoredHlc != null) {
+          _clock.observe(remote.restoredHlc!);
+        }
         final local = await _entityOf(remote.type, remote.id);
         final merged = mergeEntities(local, remote);
         await _writeEntity(merged);
@@ -652,6 +655,7 @@ class TaskRepository extends ChangeNotifier {
             values: {for (final entry in merged.fields.entries) entry.key: entry.value.value},
             clocks: {for (final entry in merged.fields.entries) entry.key: entry.value.hlc},
             deleteHlc: merged.deletedHlc,
+            restoreHlc: merged.restoredHlc,
           );
         }
       }
@@ -906,8 +910,7 @@ class TaskRepository extends ChangeNotifier {
     for (final key in changedKeys) {
       clocks[key] = hlc;
     }
-    final deletedHlc = row.deletedHlc == null ? null : Hlc.parse(row.deletedHlc!);
-    final deleted = _deletedFlag(clocks, values, deletedHlc);
+    final deleted = row.deletedHlc != null;
     await (db.update(db.tasks)..where((item) => item.id.equals(id))).write(
       TasksCompanion(
         listId: Value(values['listId'] as String),
@@ -947,7 +950,6 @@ class TaskRepository extends ChangeNotifier {
     for (final key in changes.keys) {
       clocks[key] = hlc;
     }
-    final deletedHlc = row.deletedHlc == null ? null : Hlc.parse(row.deletedHlc!);
     await (db.update(db.taskLists)..where((item) => item.id.equals(id))).write(
       TaskListsCompanion(
         name: Value(values['name'] as String),
@@ -955,7 +957,7 @@ class TaskRepository extends ChangeNotifier {
         sortOrder: Value(values['sortOrder'] as int),
         isInbox: Value(values['isInbox'] as bool),
         archived: Value(values['archived'] as bool),
-        deleted: Value(_deletedFlag(clocks, values, deletedHlc)),
+        deleted: Value(row.deletedHlc != null),
         fieldClocks: Value(_encodeClocks(clocks)),
         updatedAt: Value(_now().millisecondsSinceEpoch),
       ),
@@ -975,12 +977,11 @@ class TaskRepository extends ChangeNotifier {
     for (final key in changes.keys) {
       clocks[key] = hlc;
     }
-    final deletedHlc = row.deletedHlc == null ? null : Hlc.parse(row.deletedHlc!);
     await (db.update(db.tags)..where((item) => item.id.equals(id))).write(
       TagsCompanion(
         name: Value(values['name'] as String),
         color: Value(values['color'] as int),
-        deleted: Value(_deletedFlag(clocks, values, deletedHlc)),
+        deleted: Value(row.deletedHlc != null),
         fieldClocks: Value(_encodeClocks(clocks)),
         updatedAt: Value(_now().millisecondsSinceEpoch),
       ),
@@ -1000,14 +1001,13 @@ class TaskRepository extends ChangeNotifier {
     for (final key in changes.keys) {
       clocks[key] = hlc;
     }
-    final deletedHlc = row.deletedHlc == null ? null : Hlc.parse(row.deletedHlc!);
     await (db.update(db.checklistItems)..where((item) => item.id.equals(id))).write(
       ChecklistItemsCompanion(
         taskId: Value(values['taskId'] as String),
         title: Value(values['title'] as String),
         done: Value(values['done'] as bool),
         sortOrder: Value(values['sortOrder'] as int),
-        deleted: Value(_deletedFlag(clocks, values, deletedHlc)),
+        deleted: Value(row.deletedHlc != null),
         fieldClocks: Value(_encodeClocks(clocks)),
         updatedAt: Value(_now().millisecondsSinceEpoch),
       ),
@@ -1027,12 +1027,11 @@ class TaskRepository extends ChangeNotifier {
     for (final key in changes.keys) {
       clocks[key] = hlc;
     }
-    final deletedHlc = row.deletedHlc == null ? null : Hlc.parse(row.deletedHlc!);
     await (db.update(db.taskTags)..where((item) => item.id.equals(id))).write(
       TaskTagsCompanion(
         taskId: Value(values['taskId'] as String),
         tagId: Value(values['tagId'] as String),
-        deleted: Value(_deletedFlag(clocks, values, deletedHlc)),
+        deleted: Value(row.deletedHlc != null),
         fieldClocks: Value(_encodeClocks(clocks)),
         updatedAt: Value(_now().millisecondsSinceEpoch),
       ),
@@ -1071,12 +1070,68 @@ class TaskRepository extends ChangeNotifier {
     await _enqueue(type: type, id: id, values: const {}, deleteHlc: hlc);
   }
 
+  Future<void> _restore(String type, String id) async {
+    final hlc = _clock.tick();
+    final now = _now().millisecondsSinceEpoch;
+    switch (type) {
+      case entityTask:
+        await (db.update(db.tasks)..where((item) => item.id.equals(id))).write(
+          TasksCompanion(
+            deleted: const Value(false),
+            deletedHlc: const Value(null),
+            restoredHlc: Value(hlc.encode()),
+            updatedAt: Value(now),
+          ),
+        );
+      case entityList:
+        await (db.update(db.taskLists)..where((item) => item.id.equals(id))).write(
+          TaskListsCompanion(
+            deleted: const Value(false),
+            deletedHlc: const Value(null),
+            restoredHlc: Value(hlc.encode()),
+            updatedAt: Value(now),
+          ),
+        );
+      case entityTag:
+        await (db.update(db.tags)..where((item) => item.id.equals(id))).write(
+          TagsCompanion(
+            deleted: const Value(false),
+            deletedHlc: const Value(null),
+            restoredHlc: Value(hlc.encode()),
+            updatedAt: Value(now),
+          ),
+        );
+      case entityTaskTag:
+        await (db.update(db.taskTags)..where((item) => item.id.equals(id))).write(
+          TaskTagsCompanion(
+            deleted: const Value(false),
+            deletedHlc: const Value(null),
+            restoredHlc: Value(hlc.encode()),
+            updatedAt: Value(now),
+          ),
+        );
+      case entityChecklist:
+        await (db.update(db.checklistItems)..where((item) => item.id.equals(id))).write(
+          ChecklistItemsCompanion(
+            deleted: const Value(false),
+            deletedHlc: const Value(null),
+            restoredHlc: Value(hlc.encode()),
+            updatedAt: Value(now),
+          ),
+        );
+    }
+    await _enqueue(type: type, id: id, values: const {}, restoreHlc: hlc);
+  }
+
   Future<void> _applyOp(SyncOp op) async {
     for (final field in op.fields.values) {
       _clock.observe(field.hlc);
     }
     if (op.deleteHlc != null) {
       _clock.observe(op.deleteHlc!);
+    }
+    if (op.restoreHlc != null) {
+      _clock.observe(op.restoreHlc!);
     }
     final local = await _entityOf(op.entityType, op.entityId);
     final merged = mergeEntities(local, op.toEntity());
@@ -1088,6 +1143,7 @@ class TaskRepository extends ChangeNotifier {
     final clocks = {for (final entry in entity.fields.entries) entry.key: entry.value.hlc};
     final deleted = entity.isDeleted;
     final deletedHlc = entity.deletedHlc?.encode();
+    final restoredHlc = entity.restoredHlc?.encode();
     switch (entity.type) {
       case entityList:
         final existing = await _list(entity.id);
@@ -1101,6 +1157,7 @@ class TaskRepository extends ChangeNotifier {
             archived: Value(_bool(entity, 'archived', existing?.archived ?? false)),
             deleted: Value(deleted),
             deletedHlc: Value(deletedHlc),
+            restoredHlc: Value(restoredHlc),
             fieldClocks: Value(_encodeClocks(clocks)),
             createdAt: Value(existing?.createdAt ?? now),
             updatedAt: Value(now),
@@ -1131,6 +1188,7 @@ class TaskRepository extends ChangeNotifier {
             ),
             deleted: Value(deleted),
             deletedHlc: Value(deletedHlc),
+            restoredHlc: Value(restoredHlc),
             fieldClocks: Value(_encodeClocks(clocks)),
             createdAt: Value(existing?.createdAt ?? now),
             updatedAt: Value(now),
@@ -1145,6 +1203,7 @@ class TaskRepository extends ChangeNotifier {
             color: Value(_int(entity, 'color', existing?.color ?? listColors[1])),
             deleted: Value(deleted),
             deletedHlc: Value(deletedHlc),
+            restoredHlc: Value(restoredHlc),
             fieldClocks: Value(_encodeClocks(clocks)),
             createdAt: Value(existing?.createdAt ?? now),
             updatedAt: Value(now),
@@ -1159,6 +1218,7 @@ class TaskRepository extends ChangeNotifier {
             tagId: Value(_str(entity, 'tagId', existing?.tagId ?? '')),
             deleted: Value(deleted),
             deletedHlc: Value(deletedHlc),
+            restoredHlc: Value(restoredHlc),
             fieldClocks: Value(_encodeClocks(clocks)),
             createdAt: Value(existing?.createdAt ?? now),
             updatedAt: Value(now),
@@ -1175,6 +1235,7 @@ class TaskRepository extends ChangeNotifier {
             sortOrder: Value(_int(entity, 'sortOrder', existing?.sortOrder ?? 0)),
             deleted: Value(deleted),
             deletedHlc: Value(deletedHlc),
+            restoredHlc: Value(restoredHlc),
             fieldClocks: Value(_encodeClocks(clocks)),
             createdAt: Value(existing?.createdAt ?? now),
             updatedAt: Value(now),
@@ -1212,6 +1273,7 @@ class TaskRepository extends ChangeNotifier {
     Hlc? hlc,
     Map<String, Hlc>? clocks,
     Hlc? deleteHlc,
+    Hlc? restoreHlc,
   }) async {
     final fields = <String, FieldValue>{};
     values.forEach((key, value) {
@@ -1228,6 +1290,7 @@ class TaskRepository extends ChangeNotifier {
       fields: fields,
       createdAt: _now().millisecondsSinceEpoch,
       deleteHlc: deleteHlc,
+      restoreHlc: restoreHlc,
     );
     await db.into(db.outboxOps).insert(
       OutboxOpsCompanion(
@@ -1312,16 +1375,6 @@ Map<String, Object?> _checklistValues(ChecklistRow row) => {
 
 Map<String, Object?> _taskTagValues(TaskTagRow row) => {'taskId': row.taskId, 'tagId': row.tagId};
 
-bool _deletedFlag(Map<String, Hlc> clocks, Map<String, Object?> values, Hlc? deletedHlc) {
-  final fields = <String, FieldValue>{};
-  clocks.forEach((key, clock) {
-    if (values.containsKey(key)) {
-      fields[key] = FieldValue(values[key], clock);
-    }
-  });
-  return SyncEntity(type: '', id: '', fields: fields, deletedHlc: deletedHlc).isDeleted;
-}
-
 String _encodeClocks(Map<String, Hlc> clocks) =>
     jsonEncode(clocks.map((key, value) => MapEntry(key, value.encode())));
 
@@ -1342,6 +1395,7 @@ SyncEntity _withClocks({
   required Map<String, Object?> values,
   required String clocksRaw,
   required String? deletedHlc,
+  required String? restoredHlc,
 }) {
   final clocks = _decodeClocks(clocksRaw);
   final fields = <String, FieldValue>{};
@@ -1356,6 +1410,7 @@ SyncEntity _withClocks({
     id: id,
     fields: fields,
     deletedHlc: deletedHlc == null ? null : Hlc.parse(deletedHlc),
+    restoredHlc: restoredHlc == null ? null : Hlc.parse(restoredHlc),
   );
 }
 
@@ -1365,6 +1420,7 @@ SyncEntity _listToEntity(TaskListRow row) => _withClocks(
   values: _listValues(row),
   clocksRaw: row.fieldClocks,
   deletedHlc: row.deletedHlc,
+  restoredHlc: row.restoredHlc,
 );
 
 SyncEntity _taskToEntity(TaskRow row) => _withClocks(
@@ -1373,6 +1429,7 @@ SyncEntity _taskToEntity(TaskRow row) => _withClocks(
   values: _taskValues(row),
   clocksRaw: row.fieldClocks,
   deletedHlc: row.deletedHlc,
+  restoredHlc: row.restoredHlc,
 );
 
 SyncEntity _tagToEntity(TagRow row) => _withClocks(
@@ -1381,6 +1438,7 @@ SyncEntity _tagToEntity(TagRow row) => _withClocks(
   values: _tagValues(row),
   clocksRaw: row.fieldClocks,
   deletedHlc: row.deletedHlc,
+  restoredHlc: row.restoredHlc,
 );
 
 SyncEntity _checklistToEntity(ChecklistRow row) => _withClocks(
@@ -1389,6 +1447,7 @@ SyncEntity _checklistToEntity(ChecklistRow row) => _withClocks(
   values: _checklistValues(row),
   clocksRaw: row.fieldClocks,
   deletedHlc: row.deletedHlc,
+  restoredHlc: row.restoredHlc,
 );
 
 SyncEntity _taskTagToEntity(TaskTagRow row) => _withClocks(
@@ -1397,6 +1456,7 @@ SyncEntity _taskTagToEntity(TaskTagRow row) => _withClocks(
   values: _taskTagValues(row),
   clocksRaw: row.fieldClocks,
   deletedHlc: row.deletedHlc,
+  restoredHlc: row.restoredHlc,
 );
 
 ListModel _listModel(TaskListRow row) {

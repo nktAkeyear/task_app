@@ -1,8 +1,8 @@
 /// Hybrid logical clock.
 ///
-/// Ordering for ordinary field writes is (physical, logical, deviceId).
-/// Delete-versus-update conflicts compare physical and logical only; device id
-/// is the tie-break after that, and only when both sides are the same kind.
+/// Ordering is physical time, then the logical counter, then device id.
+/// Field edits, deletes, and restores use that order and do not compete
+/// with each other.
 class Hlc implements Comparable<Hlc> {
   const Hlc(this.physical, this.logical, this.deviceId);
 

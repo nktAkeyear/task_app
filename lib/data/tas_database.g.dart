@@ -104,6 +104,17 @@ class $TaskListsTable extends TaskLists
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _restoredHlcMeta = const VerificationMeta(
+    'restoredHlc',
+  );
+  @override
+  late final GeneratedColumn<String> restoredHlc = GeneratedColumn<String>(
+    'restored_hlc',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _fieldClocksMeta = const VerificationMeta(
     'fieldClocks',
   );
@@ -148,6 +159,7 @@ class $TaskListsTable extends TaskLists
     archived,
     deleted,
     deletedHlc,
+    restoredHlc,
     fieldClocks,
     createdAt,
     updatedAt,
@@ -213,6 +225,15 @@ class $TaskListsTable extends TaskLists
       context.handle(
         _deletedHlcMeta,
         deletedHlc.isAcceptableOrUnknown(data['deleted_hlc']!, _deletedHlcMeta),
+      );
+    }
+    if (data.containsKey('restored_hlc')) {
+      context.handle(
+        _restoredHlcMeta,
+        restoredHlc.isAcceptableOrUnknown(
+          data['restored_hlc']!,
+          _restoredHlcMeta,
+        ),
       );
     }
     if (data.containsKey('field_clocks')) {
@@ -281,6 +302,10 @@ class $TaskListsTable extends TaskLists
         DriftSqlType.string,
         data['${effectivePrefix}deleted_hlc'],
       ),
+      restoredHlc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}restored_hlc'],
+      ),
       fieldClocks: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}field_clocks'],
@@ -311,6 +336,7 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
   final bool archived;
   final bool deleted;
   final String? deletedHlc;
+  final String? restoredHlc;
   final String fieldClocks;
   final int createdAt;
   final int updatedAt;
@@ -323,6 +349,7 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
     required this.archived,
     required this.deleted,
     this.deletedHlc,
+    this.restoredHlc,
     required this.fieldClocks,
     required this.createdAt,
     required this.updatedAt,
@@ -339,6 +366,9 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
     map['deleted'] = Variable<bool>(deleted);
     if (!nullToAbsent || deletedHlc != null) {
       map['deleted_hlc'] = Variable<String>(deletedHlc);
+    }
+    if (!nullToAbsent || restoredHlc != null) {
+      map['restored_hlc'] = Variable<String>(restoredHlc);
     }
     map['field_clocks'] = Variable<String>(fieldClocks);
     map['created_at'] = Variable<int>(createdAt);
@@ -358,6 +388,9 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
       deletedHlc: deletedHlc == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedHlc),
+      restoredHlc: restoredHlc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(restoredHlc),
       fieldClocks: Value(fieldClocks),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -378,6 +411,7 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
       archived: serializer.fromJson<bool>(json['archived']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       deletedHlc: serializer.fromJson<String?>(json['deletedHlc']),
+      restoredHlc: serializer.fromJson<String?>(json['restoredHlc']),
       fieldClocks: serializer.fromJson<String>(json['fieldClocks']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
@@ -395,6 +429,7 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
       'archived': serializer.toJson<bool>(archived),
       'deleted': serializer.toJson<bool>(deleted),
       'deletedHlc': serializer.toJson<String?>(deletedHlc),
+      'restoredHlc': serializer.toJson<String?>(restoredHlc),
       'fieldClocks': serializer.toJson<String>(fieldClocks),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
@@ -410,6 +445,7 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
     bool? archived,
     bool? deleted,
     Value<String?> deletedHlc = const Value.absent(),
+    Value<String?> restoredHlc = const Value.absent(),
     String? fieldClocks,
     int? createdAt,
     int? updatedAt,
@@ -422,6 +458,7 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
     archived: archived ?? this.archived,
     deleted: deleted ?? this.deleted,
     deletedHlc: deletedHlc.present ? deletedHlc.value : this.deletedHlc,
+    restoredHlc: restoredHlc.present ? restoredHlc.value : this.restoredHlc,
     fieldClocks: fieldClocks ?? this.fieldClocks,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -438,6 +475,9 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
       deletedHlc: data.deletedHlc.present
           ? data.deletedHlc.value
           : this.deletedHlc,
+      restoredHlc: data.restoredHlc.present
+          ? data.restoredHlc.value
+          : this.restoredHlc,
       fieldClocks: data.fieldClocks.present
           ? data.fieldClocks.value
           : this.fieldClocks,
@@ -457,6 +497,7 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
           ..write('archived: $archived, ')
           ..write('deleted: $deleted, ')
           ..write('deletedHlc: $deletedHlc, ')
+          ..write('restoredHlc: $restoredHlc, ')
           ..write('fieldClocks: $fieldClocks, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -474,6 +515,7 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
     archived,
     deleted,
     deletedHlc,
+    restoredHlc,
     fieldClocks,
     createdAt,
     updatedAt,
@@ -490,6 +532,7 @@ class TaskListRow extends DataClass implements Insertable<TaskListRow> {
           other.archived == this.archived &&
           other.deleted == this.deleted &&
           other.deletedHlc == this.deletedHlc &&
+          other.restoredHlc == this.restoredHlc &&
           other.fieldClocks == this.fieldClocks &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -504,6 +547,7 @@ class TaskListsCompanion extends UpdateCompanion<TaskListRow> {
   final Value<bool> archived;
   final Value<bool> deleted;
   final Value<String?> deletedHlc;
+  final Value<String?> restoredHlc;
   final Value<String> fieldClocks;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -517,6 +561,7 @@ class TaskListsCompanion extends UpdateCompanion<TaskListRow> {
     this.archived = const Value.absent(),
     this.deleted = const Value.absent(),
     this.deletedHlc = const Value.absent(),
+    this.restoredHlc = const Value.absent(),
     this.fieldClocks = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -531,6 +576,7 @@ class TaskListsCompanion extends UpdateCompanion<TaskListRow> {
     this.archived = const Value.absent(),
     this.deleted = const Value.absent(),
     this.deletedHlc = const Value.absent(),
+    this.restoredHlc = const Value.absent(),
     this.fieldClocks = const Value.absent(),
     required int createdAt,
     required int updatedAt,
@@ -549,6 +595,7 @@ class TaskListsCompanion extends UpdateCompanion<TaskListRow> {
     Expression<bool>? archived,
     Expression<bool>? deleted,
     Expression<String>? deletedHlc,
+    Expression<String>? restoredHlc,
     Expression<String>? fieldClocks,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -563,6 +610,7 @@ class TaskListsCompanion extends UpdateCompanion<TaskListRow> {
       if (archived != null) 'archived': archived,
       if (deleted != null) 'deleted': deleted,
       if (deletedHlc != null) 'deleted_hlc': deletedHlc,
+      if (restoredHlc != null) 'restored_hlc': restoredHlc,
       if (fieldClocks != null) 'field_clocks': fieldClocks,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -579,6 +627,7 @@ class TaskListsCompanion extends UpdateCompanion<TaskListRow> {
     Value<bool>? archived,
     Value<bool>? deleted,
     Value<String?>? deletedHlc,
+    Value<String?>? restoredHlc,
     Value<String>? fieldClocks,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -593,6 +642,7 @@ class TaskListsCompanion extends UpdateCompanion<TaskListRow> {
       archived: archived ?? this.archived,
       deleted: deleted ?? this.deleted,
       deletedHlc: deletedHlc ?? this.deletedHlc,
+      restoredHlc: restoredHlc ?? this.restoredHlc,
       fieldClocks: fieldClocks ?? this.fieldClocks,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -627,6 +677,9 @@ class TaskListsCompanion extends UpdateCompanion<TaskListRow> {
     if (deletedHlc.present) {
       map['deleted_hlc'] = Variable<String>(deletedHlc.value);
     }
+    if (restoredHlc.present) {
+      map['restored_hlc'] = Variable<String>(restoredHlc.value);
+    }
     if (fieldClocks.present) {
       map['field_clocks'] = Variable<String>(fieldClocks.value);
     }
@@ -653,6 +706,7 @@ class TaskListsCompanion extends UpdateCompanion<TaskListRow> {
           ..write('archived: $archived, ')
           ..write('deleted: $deleted, ')
           ..write('deletedHlc: $deletedHlc, ')
+          ..write('restoredHlc: $restoredHlc, ')
           ..write('fieldClocks: $fieldClocks, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -839,6 +893,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _restoredHlcMeta = const VerificationMeta(
+    'restoredHlc',
+  );
+  @override
+  late final GeneratedColumn<String> restoredHlc = GeneratedColumn<String>(
+    'restored_hlc',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _fieldClocksMeta = const VerificationMeta(
     'fieldClocks',
   );
@@ -890,6 +955,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     completedAt,
     deleted,
     deletedHlc,
+    restoredHlc,
     fieldClocks,
     createdAt,
     updatedAt,
@@ -1008,6 +1074,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         deletedHlc.isAcceptableOrUnknown(data['deleted_hlc']!, _deletedHlcMeta),
       );
     }
+    if (data.containsKey('restored_hlc')) {
+      context.handle(
+        _restoredHlcMeta,
+        restoredHlc.isAcceptableOrUnknown(
+          data['restored_hlc']!,
+          _restoredHlcMeta,
+        ),
+      );
+    }
     if (data.containsKey('field_clocks')) {
       context.handle(
         _fieldClocksMeta,
@@ -1102,6 +1177,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         DriftSqlType.string,
         data['${effectivePrefix}deleted_hlc'],
       ),
+      restoredHlc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}restored_hlc'],
+      ),
       fieldClocks: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}field_clocks'],
@@ -1139,6 +1218,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
   final int? completedAt;
   final bool deleted;
   final String? deletedHlc;
+  final String? restoredHlc;
   final String fieldClocks;
   final int createdAt;
   final int updatedAt;
@@ -1158,6 +1238,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     this.completedAt,
     required this.deleted,
     this.deletedHlc,
+    this.restoredHlc,
     required this.fieldClocks,
     required this.createdAt,
     required this.updatedAt,
@@ -1187,6 +1268,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     map['deleted'] = Variable<bool>(deleted);
     if (!nullToAbsent || deletedHlc != null) {
       map['deleted_hlc'] = Variable<String>(deletedHlc);
+    }
+    if (!nullToAbsent || restoredHlc != null) {
+      map['restored_hlc'] = Variable<String>(restoredHlc);
     }
     map['field_clocks'] = Variable<String>(fieldClocks);
     map['created_at'] = Variable<int>(createdAt);
@@ -1219,6 +1303,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       deletedHlc: deletedHlc == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedHlc),
+      restoredHlc: restoredHlc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(restoredHlc),
       fieldClocks: Value(fieldClocks),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -1246,6 +1333,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       completedAt: serializer.fromJson<int?>(json['completedAt']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       deletedHlc: serializer.fromJson<String?>(json['deletedHlc']),
+      restoredHlc: serializer.fromJson<String?>(json['restoredHlc']),
       fieldClocks: serializer.fromJson<String>(json['fieldClocks']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
@@ -1270,6 +1358,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       'completedAt': serializer.toJson<int?>(completedAt),
       'deleted': serializer.toJson<bool>(deleted),
       'deletedHlc': serializer.toJson<String?>(deletedHlc),
+      'restoredHlc': serializer.toJson<String?>(restoredHlc),
       'fieldClocks': serializer.toJson<String>(fieldClocks),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
@@ -1292,6 +1381,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     Value<int?> completedAt = const Value.absent(),
     bool? deleted,
     Value<String?> deletedHlc = const Value.absent(),
+    Value<String?> restoredHlc = const Value.absent(),
     String? fieldClocks,
     int? createdAt,
     int? updatedAt,
@@ -1311,6 +1401,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     deleted: deleted ?? this.deleted,
     deletedHlc: deletedHlc.present ? deletedHlc.value : this.deletedHlc,
+    restoredHlc: restoredHlc.present ? restoredHlc.value : this.restoredHlc,
     fieldClocks: fieldClocks ?? this.fieldClocks,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1344,6 +1435,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       deletedHlc: data.deletedHlc.present
           ? data.deletedHlc.value
           : this.deletedHlc,
+      restoredHlc: data.restoredHlc.present
+          ? data.restoredHlc.value
+          : this.restoredHlc,
       fieldClocks: data.fieldClocks.present
           ? data.fieldClocks.value
           : this.fieldClocks,
@@ -1370,6 +1464,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           ..write('completedAt: $completedAt, ')
           ..write('deleted: $deleted, ')
           ..write('deletedHlc: $deletedHlc, ')
+          ..write('restoredHlc: $restoredHlc, ')
           ..write('fieldClocks: $fieldClocks, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -1394,6 +1489,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     completedAt,
     deleted,
     deletedHlc,
+    restoredHlc,
     fieldClocks,
     createdAt,
     updatedAt,
@@ -1417,6 +1513,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           other.completedAt == this.completedAt &&
           other.deleted == this.deleted &&
           other.deletedHlc == this.deletedHlc &&
+          other.restoredHlc == this.restoredHlc &&
           other.fieldClocks == this.fieldClocks &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -1438,6 +1535,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
   final Value<int?> completedAt;
   final Value<bool> deleted;
   final Value<String?> deletedHlc;
+  final Value<String?> restoredHlc;
   final Value<String> fieldClocks;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -1458,6 +1556,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.completedAt = const Value.absent(),
     this.deleted = const Value.absent(),
     this.deletedHlc = const Value.absent(),
+    this.restoredHlc = const Value.absent(),
     this.fieldClocks = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1479,6 +1578,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.completedAt = const Value.absent(),
     this.deleted = const Value.absent(),
     this.deletedHlc = const Value.absent(),
+    this.restoredHlc = const Value.absent(),
     this.fieldClocks = const Value.absent(),
     required int createdAt,
     required int updatedAt,
@@ -1504,6 +1604,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Expression<int>? completedAt,
     Expression<bool>? deleted,
     Expression<String>? deletedHlc,
+    Expression<String>? restoredHlc,
     Expression<String>? fieldClocks,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -1525,6 +1626,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       if (completedAt != null) 'completed_at': completedAt,
       if (deleted != null) 'deleted': deleted,
       if (deletedHlc != null) 'deleted_hlc': deletedHlc,
+      if (restoredHlc != null) 'restored_hlc': restoredHlc,
       if (fieldClocks != null) 'field_clocks': fieldClocks,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1548,6 +1650,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Value<int?>? completedAt,
     Value<bool>? deleted,
     Value<String?>? deletedHlc,
+    Value<String?>? restoredHlc,
     Value<String>? fieldClocks,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -1569,6 +1672,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       completedAt: completedAt ?? this.completedAt,
       deleted: deleted ?? this.deleted,
       deletedHlc: deletedHlc ?? this.deletedHlc,
+      restoredHlc: restoredHlc ?? this.restoredHlc,
       fieldClocks: fieldClocks ?? this.fieldClocks,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1624,6 +1728,9 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     if (deletedHlc.present) {
       map['deleted_hlc'] = Variable<String>(deletedHlc.value);
     }
+    if (restoredHlc.present) {
+      map['restored_hlc'] = Variable<String>(restoredHlc.value);
+    }
     if (fieldClocks.present) {
       map['field_clocks'] = Variable<String>(fieldClocks.value);
     }
@@ -1657,6 +1764,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
           ..write('completedAt: $completedAt, ')
           ..write('deleted: $deleted, ')
           ..write('deletedHlc: $deletedHlc, ')
+          ..write('restoredHlc: $restoredHlc, ')
           ..write('fieldClocks: $fieldClocks, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -1724,6 +1832,17 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _restoredHlcMeta = const VerificationMeta(
+    'restoredHlc',
+  );
+  @override
+  late final GeneratedColumn<String> restoredHlc = GeneratedColumn<String>(
+    'restored_hlc',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _fieldClocksMeta = const VerificationMeta(
     'fieldClocks',
   );
@@ -1765,6 +1884,7 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
     color,
     deleted,
     deletedHlc,
+    restoredHlc,
     fieldClocks,
     createdAt,
     updatedAt,
@@ -1812,6 +1932,15 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
       context.handle(
         _deletedHlcMeta,
         deletedHlc.isAcceptableOrUnknown(data['deleted_hlc']!, _deletedHlcMeta),
+      );
+    }
+    if (data.containsKey('restored_hlc')) {
+      context.handle(
+        _restoredHlcMeta,
+        restoredHlc.isAcceptableOrUnknown(
+          data['restored_hlc']!,
+          _restoredHlcMeta,
+        ),
       );
     }
     if (data.containsKey('field_clocks')) {
@@ -1868,6 +1997,10 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRow> {
         DriftSqlType.string,
         data['${effectivePrefix}deleted_hlc'],
       ),
+      restoredHlc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}restored_hlc'],
+      ),
       fieldClocks: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}field_clocks'],
@@ -1895,6 +2028,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
   final int color;
   final bool deleted;
   final String? deletedHlc;
+  final String? restoredHlc;
   final String fieldClocks;
   final int createdAt;
   final int updatedAt;
@@ -1904,6 +2038,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
     required this.color,
     required this.deleted,
     this.deletedHlc,
+    this.restoredHlc,
     required this.fieldClocks,
     required this.createdAt,
     required this.updatedAt,
@@ -1917,6 +2052,9 @@ class TagRow extends DataClass implements Insertable<TagRow> {
     map['deleted'] = Variable<bool>(deleted);
     if (!nullToAbsent || deletedHlc != null) {
       map['deleted_hlc'] = Variable<String>(deletedHlc);
+    }
+    if (!nullToAbsent || restoredHlc != null) {
+      map['restored_hlc'] = Variable<String>(restoredHlc);
     }
     map['field_clocks'] = Variable<String>(fieldClocks);
     map['created_at'] = Variable<int>(createdAt);
@@ -1933,6 +2071,9 @@ class TagRow extends DataClass implements Insertable<TagRow> {
       deletedHlc: deletedHlc == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedHlc),
+      restoredHlc: restoredHlc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(restoredHlc),
       fieldClocks: Value(fieldClocks),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -1950,6 +2091,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
       color: serializer.fromJson<int>(json['color']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       deletedHlc: serializer.fromJson<String?>(json['deletedHlc']),
+      restoredHlc: serializer.fromJson<String?>(json['restoredHlc']),
       fieldClocks: serializer.fromJson<String>(json['fieldClocks']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
@@ -1964,6 +2106,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
       'color': serializer.toJson<int>(color),
       'deleted': serializer.toJson<bool>(deleted),
       'deletedHlc': serializer.toJson<String?>(deletedHlc),
+      'restoredHlc': serializer.toJson<String?>(restoredHlc),
       'fieldClocks': serializer.toJson<String>(fieldClocks),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
@@ -1976,6 +2119,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
     int? color,
     bool? deleted,
     Value<String?> deletedHlc = const Value.absent(),
+    Value<String?> restoredHlc = const Value.absent(),
     String? fieldClocks,
     int? createdAt,
     int? updatedAt,
@@ -1985,6 +2129,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
     color: color ?? this.color,
     deleted: deleted ?? this.deleted,
     deletedHlc: deletedHlc.present ? deletedHlc.value : this.deletedHlc,
+    restoredHlc: restoredHlc.present ? restoredHlc.value : this.restoredHlc,
     fieldClocks: fieldClocks ?? this.fieldClocks,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1998,6 +2143,9 @@ class TagRow extends DataClass implements Insertable<TagRow> {
       deletedHlc: data.deletedHlc.present
           ? data.deletedHlc.value
           : this.deletedHlc,
+      restoredHlc: data.restoredHlc.present
+          ? data.restoredHlc.value
+          : this.restoredHlc,
       fieldClocks: data.fieldClocks.present
           ? data.fieldClocks.value
           : this.fieldClocks,
@@ -2014,6 +2162,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
           ..write('color: $color, ')
           ..write('deleted: $deleted, ')
           ..write('deletedHlc: $deletedHlc, ')
+          ..write('restoredHlc: $restoredHlc, ')
           ..write('fieldClocks: $fieldClocks, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -2028,6 +2177,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
     color,
     deleted,
     deletedHlc,
+    restoredHlc,
     fieldClocks,
     createdAt,
     updatedAt,
@@ -2041,6 +2191,7 @@ class TagRow extends DataClass implements Insertable<TagRow> {
           other.color == this.color &&
           other.deleted == this.deleted &&
           other.deletedHlc == this.deletedHlc &&
+          other.restoredHlc == this.restoredHlc &&
           other.fieldClocks == this.fieldClocks &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -2052,6 +2203,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
   final Value<int> color;
   final Value<bool> deleted;
   final Value<String?> deletedHlc;
+  final Value<String?> restoredHlc;
   final Value<String> fieldClocks;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -2062,6 +2214,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
     this.color = const Value.absent(),
     this.deleted = const Value.absent(),
     this.deletedHlc = const Value.absent(),
+    this.restoredHlc = const Value.absent(),
     this.fieldClocks = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2073,6 +2226,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
     required int color,
     this.deleted = const Value.absent(),
     this.deletedHlc = const Value.absent(),
+    this.restoredHlc = const Value.absent(),
     this.fieldClocks = const Value.absent(),
     required int createdAt,
     required int updatedAt,
@@ -2088,6 +2242,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
     Expression<int>? color,
     Expression<bool>? deleted,
     Expression<String>? deletedHlc,
+    Expression<String>? restoredHlc,
     Expression<String>? fieldClocks,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -2099,6 +2254,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
       if (color != null) 'color': color,
       if (deleted != null) 'deleted': deleted,
       if (deletedHlc != null) 'deleted_hlc': deletedHlc,
+      if (restoredHlc != null) 'restored_hlc': restoredHlc,
       if (fieldClocks != null) 'field_clocks': fieldClocks,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2112,6 +2268,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
     Value<int>? color,
     Value<bool>? deleted,
     Value<String?>? deletedHlc,
+    Value<String?>? restoredHlc,
     Value<String>? fieldClocks,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -2123,6 +2280,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
       color: color ?? this.color,
       deleted: deleted ?? this.deleted,
       deletedHlc: deletedHlc ?? this.deletedHlc,
+      restoredHlc: restoredHlc ?? this.restoredHlc,
       fieldClocks: fieldClocks ?? this.fieldClocks,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2148,6 +2306,9 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
     if (deletedHlc.present) {
       map['deleted_hlc'] = Variable<String>(deletedHlc.value);
     }
+    if (restoredHlc.present) {
+      map['restored_hlc'] = Variable<String>(restoredHlc.value);
+    }
     if (fieldClocks.present) {
       map['field_clocks'] = Variable<String>(fieldClocks.value);
     }
@@ -2171,6 +2332,7 @@ class TagsCompanion extends UpdateCompanion<TagRow> {
           ..write('color: $color, ')
           ..write('deleted: $deleted, ')
           ..write('deletedHlc: $deletedHlc, ')
+          ..write('restoredHlc: $restoredHlc, ')
           ..write('fieldClocks: $fieldClocks, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2239,6 +2401,17 @@ class $TaskTagsTable extends TaskTags
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _restoredHlcMeta = const VerificationMeta(
+    'restoredHlc',
+  );
+  @override
+  late final GeneratedColumn<String> restoredHlc = GeneratedColumn<String>(
+    'restored_hlc',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _fieldClocksMeta = const VerificationMeta(
     'fieldClocks',
   );
@@ -2280,6 +2453,7 @@ class $TaskTagsTable extends TaskTags
     tagId,
     deleted,
     deletedHlc,
+    restoredHlc,
     fieldClocks,
     createdAt,
     updatedAt,
@@ -2327,6 +2501,15 @@ class $TaskTagsTable extends TaskTags
       context.handle(
         _deletedHlcMeta,
         deletedHlc.isAcceptableOrUnknown(data['deleted_hlc']!, _deletedHlcMeta),
+      );
+    }
+    if (data.containsKey('restored_hlc')) {
+      context.handle(
+        _restoredHlcMeta,
+        restoredHlc.isAcceptableOrUnknown(
+          data['restored_hlc']!,
+          _restoredHlcMeta,
+        ),
       );
     }
     if (data.containsKey('field_clocks')) {
@@ -2383,6 +2566,10 @@ class $TaskTagsTable extends TaskTags
         DriftSqlType.string,
         data['${effectivePrefix}deleted_hlc'],
       ),
+      restoredHlc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}restored_hlc'],
+      ),
       fieldClocks: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}field_clocks'],
@@ -2410,6 +2597,7 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
   final String tagId;
   final bool deleted;
   final String? deletedHlc;
+  final String? restoredHlc;
   final String fieldClocks;
   final int createdAt;
   final int updatedAt;
@@ -2419,6 +2607,7 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
     required this.tagId,
     required this.deleted,
     this.deletedHlc,
+    this.restoredHlc,
     required this.fieldClocks,
     required this.createdAt,
     required this.updatedAt,
@@ -2432,6 +2621,9 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
     map['deleted'] = Variable<bool>(deleted);
     if (!nullToAbsent || deletedHlc != null) {
       map['deleted_hlc'] = Variable<String>(deletedHlc);
+    }
+    if (!nullToAbsent || restoredHlc != null) {
+      map['restored_hlc'] = Variable<String>(restoredHlc);
     }
     map['field_clocks'] = Variable<String>(fieldClocks);
     map['created_at'] = Variable<int>(createdAt);
@@ -2448,6 +2640,9 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
       deletedHlc: deletedHlc == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedHlc),
+      restoredHlc: restoredHlc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(restoredHlc),
       fieldClocks: Value(fieldClocks),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -2465,6 +2660,7 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
       tagId: serializer.fromJson<String>(json['tagId']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       deletedHlc: serializer.fromJson<String?>(json['deletedHlc']),
+      restoredHlc: serializer.fromJson<String?>(json['restoredHlc']),
       fieldClocks: serializer.fromJson<String>(json['fieldClocks']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
@@ -2479,6 +2675,7 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
       'tagId': serializer.toJson<String>(tagId),
       'deleted': serializer.toJson<bool>(deleted),
       'deletedHlc': serializer.toJson<String?>(deletedHlc),
+      'restoredHlc': serializer.toJson<String?>(restoredHlc),
       'fieldClocks': serializer.toJson<String>(fieldClocks),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
@@ -2491,6 +2688,7 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
     String? tagId,
     bool? deleted,
     Value<String?> deletedHlc = const Value.absent(),
+    Value<String?> restoredHlc = const Value.absent(),
     String? fieldClocks,
     int? createdAt,
     int? updatedAt,
@@ -2500,6 +2698,7 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
     tagId: tagId ?? this.tagId,
     deleted: deleted ?? this.deleted,
     deletedHlc: deletedHlc.present ? deletedHlc.value : this.deletedHlc,
+    restoredHlc: restoredHlc.present ? restoredHlc.value : this.restoredHlc,
     fieldClocks: fieldClocks ?? this.fieldClocks,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -2513,6 +2712,9 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
       deletedHlc: data.deletedHlc.present
           ? data.deletedHlc.value
           : this.deletedHlc,
+      restoredHlc: data.restoredHlc.present
+          ? data.restoredHlc.value
+          : this.restoredHlc,
       fieldClocks: data.fieldClocks.present
           ? data.fieldClocks.value
           : this.fieldClocks,
@@ -2529,6 +2731,7 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
           ..write('tagId: $tagId, ')
           ..write('deleted: $deleted, ')
           ..write('deletedHlc: $deletedHlc, ')
+          ..write('restoredHlc: $restoredHlc, ')
           ..write('fieldClocks: $fieldClocks, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -2543,6 +2746,7 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
     tagId,
     deleted,
     deletedHlc,
+    restoredHlc,
     fieldClocks,
     createdAt,
     updatedAt,
@@ -2556,6 +2760,7 @@ class TaskTagRow extends DataClass implements Insertable<TaskTagRow> {
           other.tagId == this.tagId &&
           other.deleted == this.deleted &&
           other.deletedHlc == this.deletedHlc &&
+          other.restoredHlc == this.restoredHlc &&
           other.fieldClocks == this.fieldClocks &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -2567,6 +2772,7 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTagRow> {
   final Value<String> tagId;
   final Value<bool> deleted;
   final Value<String?> deletedHlc;
+  final Value<String?> restoredHlc;
   final Value<String> fieldClocks;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -2577,6 +2783,7 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTagRow> {
     this.tagId = const Value.absent(),
     this.deleted = const Value.absent(),
     this.deletedHlc = const Value.absent(),
+    this.restoredHlc = const Value.absent(),
     this.fieldClocks = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2588,6 +2795,7 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTagRow> {
     required String tagId,
     this.deleted = const Value.absent(),
     this.deletedHlc = const Value.absent(),
+    this.restoredHlc = const Value.absent(),
     this.fieldClocks = const Value.absent(),
     required int createdAt,
     required int updatedAt,
@@ -2603,6 +2811,7 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTagRow> {
     Expression<String>? tagId,
     Expression<bool>? deleted,
     Expression<String>? deletedHlc,
+    Expression<String>? restoredHlc,
     Expression<String>? fieldClocks,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -2614,6 +2823,7 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTagRow> {
       if (tagId != null) 'tag_id': tagId,
       if (deleted != null) 'deleted': deleted,
       if (deletedHlc != null) 'deleted_hlc': deletedHlc,
+      if (restoredHlc != null) 'restored_hlc': restoredHlc,
       if (fieldClocks != null) 'field_clocks': fieldClocks,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2627,6 +2837,7 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTagRow> {
     Value<String>? tagId,
     Value<bool>? deleted,
     Value<String?>? deletedHlc,
+    Value<String?>? restoredHlc,
     Value<String>? fieldClocks,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -2638,6 +2849,7 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTagRow> {
       tagId: tagId ?? this.tagId,
       deleted: deleted ?? this.deleted,
       deletedHlc: deletedHlc ?? this.deletedHlc,
+      restoredHlc: restoredHlc ?? this.restoredHlc,
       fieldClocks: fieldClocks ?? this.fieldClocks,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2663,6 +2875,9 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTagRow> {
     if (deletedHlc.present) {
       map['deleted_hlc'] = Variable<String>(deletedHlc.value);
     }
+    if (restoredHlc.present) {
+      map['restored_hlc'] = Variable<String>(restoredHlc.value);
+    }
     if (fieldClocks.present) {
       map['field_clocks'] = Variable<String>(fieldClocks.value);
     }
@@ -2686,6 +2901,7 @@ class TaskTagsCompanion extends UpdateCompanion<TaskTagRow> {
           ..write('tagId: $tagId, ')
           ..write('deleted: $deleted, ')
           ..write('deletedHlc: $deletedHlc, ')
+          ..write('restoredHlc: $restoredHlc, ')
           ..write('fieldClocks: $fieldClocks, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2779,6 +2995,17 @@ class $ChecklistItemsTable extends ChecklistItems
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _restoredHlcMeta = const VerificationMeta(
+    'restoredHlc',
+  );
+  @override
+  late final GeneratedColumn<String> restoredHlc = GeneratedColumn<String>(
+    'restored_hlc',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _fieldClocksMeta = const VerificationMeta(
     'fieldClocks',
   );
@@ -2822,6 +3049,7 @@ class $ChecklistItemsTable extends ChecklistItems
     sortOrder,
     deleted,
     deletedHlc,
+    restoredHlc,
     fieldClocks,
     createdAt,
     updatedAt,
@@ -2881,6 +3109,15 @@ class $ChecklistItemsTable extends ChecklistItems
       context.handle(
         _deletedHlcMeta,
         deletedHlc.isAcceptableOrUnknown(data['deleted_hlc']!, _deletedHlcMeta),
+      );
+    }
+    if (data.containsKey('restored_hlc')) {
+      context.handle(
+        _restoredHlcMeta,
+        restoredHlc.isAcceptableOrUnknown(
+          data['restored_hlc']!,
+          _restoredHlcMeta,
+        ),
       );
     }
     if (data.containsKey('field_clocks')) {
@@ -2945,6 +3182,10 @@ class $ChecklistItemsTable extends ChecklistItems
         DriftSqlType.string,
         data['${effectivePrefix}deleted_hlc'],
       ),
+      restoredHlc: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}restored_hlc'],
+      ),
       fieldClocks: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}field_clocks'],
@@ -2974,6 +3215,7 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
   final int sortOrder;
   final bool deleted;
   final String? deletedHlc;
+  final String? restoredHlc;
   final String fieldClocks;
   final int createdAt;
   final int updatedAt;
@@ -2985,6 +3227,7 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
     required this.sortOrder,
     required this.deleted,
     this.deletedHlc,
+    this.restoredHlc,
     required this.fieldClocks,
     required this.createdAt,
     required this.updatedAt,
@@ -3000,6 +3243,9 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
     map['deleted'] = Variable<bool>(deleted);
     if (!nullToAbsent || deletedHlc != null) {
       map['deleted_hlc'] = Variable<String>(deletedHlc);
+    }
+    if (!nullToAbsent || restoredHlc != null) {
+      map['restored_hlc'] = Variable<String>(restoredHlc);
     }
     map['field_clocks'] = Variable<String>(fieldClocks);
     map['created_at'] = Variable<int>(createdAt);
@@ -3018,6 +3264,9 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
       deletedHlc: deletedHlc == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedHlc),
+      restoredHlc: restoredHlc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(restoredHlc),
       fieldClocks: Value(fieldClocks),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -3037,6 +3286,7 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       deleted: serializer.fromJson<bool>(json['deleted']),
       deletedHlc: serializer.fromJson<String?>(json['deletedHlc']),
+      restoredHlc: serializer.fromJson<String?>(json['restoredHlc']),
       fieldClocks: serializer.fromJson<String>(json['fieldClocks']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
@@ -3053,6 +3303,7 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
       'sortOrder': serializer.toJson<int>(sortOrder),
       'deleted': serializer.toJson<bool>(deleted),
       'deletedHlc': serializer.toJson<String?>(deletedHlc),
+      'restoredHlc': serializer.toJson<String?>(restoredHlc),
       'fieldClocks': serializer.toJson<String>(fieldClocks),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
@@ -3067,6 +3318,7 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
     int? sortOrder,
     bool? deleted,
     Value<String?> deletedHlc = const Value.absent(),
+    Value<String?> restoredHlc = const Value.absent(),
     String? fieldClocks,
     int? createdAt,
     int? updatedAt,
@@ -3078,6 +3330,7 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
     sortOrder: sortOrder ?? this.sortOrder,
     deleted: deleted ?? this.deleted,
     deletedHlc: deletedHlc.present ? deletedHlc.value : this.deletedHlc,
+    restoredHlc: restoredHlc.present ? restoredHlc.value : this.restoredHlc,
     fieldClocks: fieldClocks ?? this.fieldClocks,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -3093,6 +3346,9 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
       deletedHlc: data.deletedHlc.present
           ? data.deletedHlc.value
           : this.deletedHlc,
+      restoredHlc: data.restoredHlc.present
+          ? data.restoredHlc.value
+          : this.restoredHlc,
       fieldClocks: data.fieldClocks.present
           ? data.fieldClocks.value
           : this.fieldClocks,
@@ -3111,6 +3367,7 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
           ..write('sortOrder: $sortOrder, ')
           ..write('deleted: $deleted, ')
           ..write('deletedHlc: $deletedHlc, ')
+          ..write('restoredHlc: $restoredHlc, ')
           ..write('fieldClocks: $fieldClocks, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -3127,6 +3384,7 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
     sortOrder,
     deleted,
     deletedHlc,
+    restoredHlc,
     fieldClocks,
     createdAt,
     updatedAt,
@@ -3142,6 +3400,7 @@ class ChecklistRow extends DataClass implements Insertable<ChecklistRow> {
           other.sortOrder == this.sortOrder &&
           other.deleted == this.deleted &&
           other.deletedHlc == this.deletedHlc &&
+          other.restoredHlc == this.restoredHlc &&
           other.fieldClocks == this.fieldClocks &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -3155,6 +3414,7 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistRow> {
   final Value<int> sortOrder;
   final Value<bool> deleted;
   final Value<String?> deletedHlc;
+  final Value<String?> restoredHlc;
   final Value<String> fieldClocks;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -3167,6 +3427,7 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistRow> {
     this.sortOrder = const Value.absent(),
     this.deleted = const Value.absent(),
     this.deletedHlc = const Value.absent(),
+    this.restoredHlc = const Value.absent(),
     this.fieldClocks = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -3180,6 +3441,7 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistRow> {
     this.sortOrder = const Value.absent(),
     this.deleted = const Value.absent(),
     this.deletedHlc = const Value.absent(),
+    this.restoredHlc = const Value.absent(),
     this.fieldClocks = const Value.absent(),
     required int createdAt,
     required int updatedAt,
@@ -3197,6 +3459,7 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistRow> {
     Expression<int>? sortOrder,
     Expression<bool>? deleted,
     Expression<String>? deletedHlc,
+    Expression<String>? restoredHlc,
     Expression<String>? fieldClocks,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -3210,6 +3473,7 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistRow> {
       if (sortOrder != null) 'sort_order': sortOrder,
       if (deleted != null) 'deleted': deleted,
       if (deletedHlc != null) 'deleted_hlc': deletedHlc,
+      if (restoredHlc != null) 'restored_hlc': restoredHlc,
       if (fieldClocks != null) 'field_clocks': fieldClocks,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -3225,6 +3489,7 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistRow> {
     Value<int>? sortOrder,
     Value<bool>? deleted,
     Value<String?>? deletedHlc,
+    Value<String?>? restoredHlc,
     Value<String>? fieldClocks,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -3238,6 +3503,7 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistRow> {
       sortOrder: sortOrder ?? this.sortOrder,
       deleted: deleted ?? this.deleted,
       deletedHlc: deletedHlc ?? this.deletedHlc,
+      restoredHlc: restoredHlc ?? this.restoredHlc,
       fieldClocks: fieldClocks ?? this.fieldClocks,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -3269,6 +3535,9 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistRow> {
     if (deletedHlc.present) {
       map['deleted_hlc'] = Variable<String>(deletedHlc.value);
     }
+    if (restoredHlc.present) {
+      map['restored_hlc'] = Variable<String>(restoredHlc.value);
+    }
     if (fieldClocks.present) {
       map['field_clocks'] = Variable<String>(fieldClocks.value);
     }
@@ -3294,6 +3563,7 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistRow> {
           ..write('sortOrder: $sortOrder, ')
           ..write('deleted: $deleted, ')
           ..write('deletedHlc: $deletedHlc, ')
+          ..write('restoredHlc: $restoredHlc, ')
           ..write('fieldClocks: $fieldClocks, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -3922,6 +4192,7 @@ typedef $$TaskListsTableCreateCompanionBuilder = TaskListsCompanion Function({
   Value<bool> archived,
   Value<bool> deleted,
   Value<String?> deletedHlc,
+  Value<String?> restoredHlc,
   Value<String> fieldClocks,
   required int createdAt,
   required int updatedAt,
@@ -3936,6 +4207,7 @@ typedef $$TaskListsTableUpdateCompanionBuilder = TaskListsCompanion Function({
   Value<bool> archived,
   Value<bool> deleted,
   Value<String?> deletedHlc,
+  Value<String?> restoredHlc,
   Value<String> fieldClocks,
   Value<int> createdAt,
   Value<int> updatedAt,
@@ -3988,6 +4260,11 @@ class $$TaskListsTableFilterComposer
 
   ColumnFilters<String> get deletedHlc => $composableBuilder(
     column: $table.deletedHlc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4056,6 +4333,11 @@ class $$TaskListsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get fieldClocks => $composableBuilder(
     column: $table.fieldClocks,
     builder: (column) => ColumnOrderings(column),
@@ -4104,6 +4386,11 @@ class $$TaskListsTableAnnotationComposer
 
   GeneratedColumn<String> get deletedHlc => $composableBuilder(
     column: $table.deletedHlc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
     builder: (column) => column,
   );
 
@@ -4158,6 +4445,7 @@ class $$TaskListsTableTableManager
                 Value<bool> archived = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<String?> deletedHlc = const Value.absent(),
+                Value<String?> restoredHlc = const Value.absent(),
                 Value<String> fieldClocks = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -4171,6 +4459,7 @@ class $$TaskListsTableTableManager
                 archived: archived,
                 deleted: deleted,
                 deletedHlc: deletedHlc,
+                restoredHlc: restoredHlc,
                 fieldClocks: fieldClocks,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4186,6 +4475,7 @@ class $$TaskListsTableTableManager
                 Value<bool> archived = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<String?> deletedHlc = const Value.absent(),
+                Value<String?> restoredHlc = const Value.absent(),
                 Value<String> fieldClocks = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
@@ -4199,6 +4489,7 @@ class $$TaskListsTableTableManager
                 archived: archived,
                 deleted: deleted,
                 deletedHlc: deletedHlc,
+                restoredHlc: restoredHlc,
                 fieldClocks: fieldClocks,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4254,6 +4545,7 @@ typedef $$TasksTableCreateCompanionBuilder = TasksCompanion Function({
   Value<int?> completedAt,
   Value<bool> deleted,
   Value<String?> deletedHlc,
+  Value<String?> restoredHlc,
   Value<String> fieldClocks,
   required int createdAt,
   required int updatedAt,
@@ -4275,6 +4567,7 @@ typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<int?> completedAt,
   Value<bool> deleted,
   Value<String?> deletedHlc,
+  Value<String?> restoredHlc,
   Value<String> fieldClocks,
   Value<int> createdAt,
   Value<int> updatedAt,
@@ -4361,6 +4654,11 @@ class $$TasksTableFilterComposer extends Composer<_$TasDatabase, $TasksTable> {
 
   ColumnFilters<String> get deletedHlc => $composableBuilder(
     column: $table.deletedHlc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4464,6 +4762,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get fieldClocks => $composableBuilder(
     column: $table.fieldClocks,
     builder: (column) => ColumnOrderings(column),
@@ -4546,6 +4849,11 @@ class $$TasksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get fieldClocks => $composableBuilder(
     column: $table.fieldClocks,
     builder: (column) => column,
@@ -4601,6 +4909,7 @@ class $$TasksTableTableManager
                 Value<int?> completedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<String?> deletedHlc = const Value.absent(),
+                Value<String?> restoredHlc = const Value.absent(),
                 Value<String> fieldClocks = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -4621,6 +4930,7 @@ class $$TasksTableTableManager
                 completedAt: completedAt,
                 deleted: deleted,
                 deletedHlc: deletedHlc,
+                restoredHlc: restoredHlc,
                 fieldClocks: fieldClocks,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4643,6 +4953,7 @@ class $$TasksTableTableManager
                 Value<int?> completedAt = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<String?> deletedHlc = const Value.absent(),
+                Value<String?> restoredHlc = const Value.absent(),
                 Value<String> fieldClocks = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
@@ -4663,6 +4974,7 @@ class $$TasksTableTableManager
                 completedAt: completedAt,
                 deleted: deleted,
                 deletedHlc: deletedHlc,
+                restoredHlc: restoredHlc,
                 fieldClocks: fieldClocks,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4705,6 +5017,7 @@ typedef $$TagsTableCreateCompanionBuilder = TagsCompanion Function({
   required int color,
   Value<bool> deleted,
   Value<String?> deletedHlc,
+  Value<String?> restoredHlc,
   Value<String> fieldClocks,
   required int createdAt,
   required int updatedAt,
@@ -4716,6 +5029,7 @@ typedef $$TagsTableUpdateCompanionBuilder = TagsCompanion Function({
   Value<int> color,
   Value<bool> deleted,
   Value<String?> deletedHlc,
+  Value<String?> restoredHlc,
   Value<String> fieldClocks,
   Value<int> createdAt,
   Value<int> updatedAt,
@@ -4752,6 +5066,11 @@ class $$TagsTableFilterComposer extends Composer<_$TasDatabase, $TagsTable> {
 
   ColumnFilters<String> get deletedHlc => $composableBuilder(
     column: $table.deletedHlc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4804,6 +5123,11 @@ class $$TagsTableOrderingComposer extends Composer<_$TasDatabase, $TagsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get fieldClocks => $composableBuilder(
     column: $table.fieldClocks,
     builder: (column) => ColumnOrderings(column),
@@ -4843,6 +5167,11 @@ class $$TagsTableAnnotationComposer
 
   GeneratedColumn<String> get deletedHlc => $composableBuilder(
     column: $table.deletedHlc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
     builder: (column) => column,
   );
 
@@ -4891,6 +5220,7 @@ class $$TagsTableTableManager
                 Value<int> color = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<String?> deletedHlc = const Value.absent(),
+                Value<String?> restoredHlc = const Value.absent(),
                 Value<String> fieldClocks = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -4901,6 +5231,7 @@ class $$TagsTableTableManager
                 color: color,
                 deleted: deleted,
                 deletedHlc: deletedHlc,
+                restoredHlc: restoredHlc,
                 fieldClocks: fieldClocks,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4913,6 +5244,7 @@ class $$TagsTableTableManager
                 required int color,
                 Value<bool> deleted = const Value.absent(),
                 Value<String?> deletedHlc = const Value.absent(),
+                Value<String?> restoredHlc = const Value.absent(),
                 Value<String> fieldClocks = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
@@ -4923,6 +5255,7 @@ class $$TagsTableTableManager
                 color: color,
                 deleted: deleted,
                 deletedHlc: deletedHlc,
+                restoredHlc: restoredHlc,
                 fieldClocks: fieldClocks,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4965,6 +5298,7 @@ typedef $$TaskTagsTableCreateCompanionBuilder = TaskTagsCompanion Function({
   required String tagId,
   Value<bool> deleted,
   Value<String?> deletedHlc,
+  Value<String?> restoredHlc,
   Value<String> fieldClocks,
   required int createdAt,
   required int updatedAt,
@@ -4976,6 +5310,7 @@ typedef $$TaskTagsTableUpdateCompanionBuilder = TaskTagsCompanion Function({
   Value<String> tagId,
   Value<bool> deleted,
   Value<String?> deletedHlc,
+  Value<String?> restoredHlc,
   Value<String> fieldClocks,
   Value<int> createdAt,
   Value<int> updatedAt,
@@ -5013,6 +5348,11 @@ class $$TaskTagsTableFilterComposer
 
   ColumnFilters<String> get deletedHlc => $composableBuilder(
     column: $table.deletedHlc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5066,6 +5406,11 @@ class $$TaskTagsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get fieldClocks => $composableBuilder(
     column: $table.fieldClocks,
     builder: (column) => ColumnOrderings(column),
@@ -5105,6 +5450,11 @@ class $$TaskTagsTableAnnotationComposer
 
   GeneratedColumn<String> get deletedHlc => $composableBuilder(
     column: $table.deletedHlc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
     builder: (column) => column,
   );
 
@@ -5156,6 +5506,7 @@ class $$TaskTagsTableTableManager
                 Value<String> tagId = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<String?> deletedHlc = const Value.absent(),
+                Value<String?> restoredHlc = const Value.absent(),
                 Value<String> fieldClocks = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -5166,6 +5517,7 @@ class $$TaskTagsTableTableManager
                 tagId: tagId,
                 deleted: deleted,
                 deletedHlc: deletedHlc,
+                restoredHlc: restoredHlc,
                 fieldClocks: fieldClocks,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -5178,6 +5530,7 @@ class $$TaskTagsTableTableManager
                 required String tagId,
                 Value<bool> deleted = const Value.absent(),
                 Value<String?> deletedHlc = const Value.absent(),
+                Value<String?> restoredHlc = const Value.absent(),
                 Value<String> fieldClocks = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
@@ -5188,6 +5541,7 @@ class $$TaskTagsTableTableManager
                 tagId: tagId,
                 deleted: deleted,
                 deletedHlc: deletedHlc,
+                restoredHlc: restoredHlc,
                 fieldClocks: fieldClocks,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -5233,6 +5587,7 @@ typedef $$ChecklistItemsTableCreateCompanionBuilder =
       Value<int> sortOrder,
       Value<bool> deleted,
       Value<String?> deletedHlc,
+      Value<String?> restoredHlc,
       Value<String> fieldClocks,
       required int createdAt,
       required int updatedAt,
@@ -5247,6 +5602,7 @@ typedef $$ChecklistItemsTableUpdateCompanionBuilder =
       Value<int> sortOrder,
       Value<bool> deleted,
       Value<String?> deletedHlc,
+      Value<String?> restoredHlc,
       Value<String> fieldClocks,
       Value<int> createdAt,
       Value<int> updatedAt,
@@ -5294,6 +5650,11 @@ class $$ChecklistItemsTableFilterComposer
 
   ColumnFilters<String> get deletedHlc => $composableBuilder(
     column: $table.deletedHlc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5357,6 +5718,11 @@ class $$ChecklistItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get fieldClocks => $composableBuilder(
     column: $table.fieldClocks,
     builder: (column) => ColumnOrderings(column),
@@ -5402,6 +5768,11 @@ class $$ChecklistItemsTableAnnotationComposer
 
   GeneratedColumn<String> get deletedHlc => $composableBuilder(
     column: $table.deletedHlc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get restoredHlc => $composableBuilder(
+    column: $table.restoredHlc,
     builder: (column) => column,
   );
 
@@ -5457,6 +5828,7 @@ class $$ChecklistItemsTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<String?> deletedHlc = const Value.absent(),
+                Value<String?> restoredHlc = const Value.absent(),
                 Value<String> fieldClocks = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -5469,6 +5841,7 @@ class $$ChecklistItemsTableTableManager
                 sortOrder: sortOrder,
                 deleted: deleted,
                 deletedHlc: deletedHlc,
+                restoredHlc: restoredHlc,
                 fieldClocks: fieldClocks,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -5483,6 +5856,7 @@ class $$ChecklistItemsTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> deleted = const Value.absent(),
                 Value<String?> deletedHlc = const Value.absent(),
+                Value<String?> restoredHlc = const Value.absent(),
                 Value<String> fieldClocks = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
@@ -5495,6 +5869,7 @@ class $$ChecklistItemsTableTableManager
                 sortOrder: sortOrder,
                 deleted: deleted,
                 deletedHlc: deletedHlc,
+                restoredHlc: restoredHlc,
                 fieldClocks: fieldClocks,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
