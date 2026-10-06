@@ -4,6 +4,7 @@ import '../app.dart';
 import '../domain/filters.dart';
 import '../domain/models.dart';
 import '../l10n/copy.dart';
+import 'add_sheet.dart';
 import 'task_pane.dart';
 
 class CalendarPane extends StatelessWidget {
@@ -14,7 +15,6 @@ class CalendarPane extends StatelessWidget {
     required this.onMonth,
     required this.onDay,
     required this.onOpen,
-    required this.quickAddFocus,
     required this.searchFocus,
     required this.query,
     required this.onQuery,
@@ -28,7 +28,6 @@ class CalendarPane extends StatelessWidget {
   final ValueChanged<DateTime> onMonth;
   final ValueChanged<DateTime> onDay;
   final ValueChanged<String> onOpen;
-  final FocusNode quickAddFocus;
   final FocusNode searchFocus;
   final String query;
   final ValueChanged<String> onQuery;
@@ -179,7 +178,7 @@ class CalendarPane extends StatelessWidget {
             onQuery: onQuery,
             searchController: searchController,
             searchFocus: searchFocus,
-            quickAddFocus: quickAddFocus,
+            onCreate: () => showAddSheet(context, day: day),
             showSearch: true,
             showTitle: false,
           ),

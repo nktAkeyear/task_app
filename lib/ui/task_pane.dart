@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../app.dart';
-import '../domain/date_phrase.dart';
 import '../domain/models.dart';
 import '../l10n/copy.dart';
-import 'task_composer.dart';
 import 'widgets.dart';
 
 class TaskPane extends StatelessWidget {
@@ -18,7 +16,6 @@ class TaskPane extends StatelessWidget {
     required this.onQuery,
     required this.searchController,
     required this.searchFocus,
-    required this.quickAddFocus,
     required this.showSearch,
     this.onCreate,
     this.showTitle = true,
@@ -34,7 +31,6 @@ class TaskPane extends StatelessWidget {
   final ValueChanged<String> onQuery;
   final TextEditingController searchController;
   final FocusNode searchFocus;
-  final FocusNode quickAddFocus;
   final bool showSearch;
   final VoidCallback? onCreate;
   final bool showTitle;
@@ -55,7 +51,7 @@ class TaskPane extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     final swipe = width < 1080;
 
-    return Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showTitle)
@@ -70,13 +66,6 @@ class TaskPane extends StatelessWidget {
                         ?.copyWith(fontWeight: FontWeight.w800),
                   ),
                 ),
-                if (onCreate != null)
-                  IconButton(
-                    key: const Key('create-task'),
-                    tooltip: copy.createTask,
-                    onPressed: onCreate,
-                    icon: const Icon(Icons.add),
-                  ),
               ],
             ),
           ),
@@ -148,27 +137,19 @@ class TaskPane extends StatelessWidget {
                   },
                 ),
         ),
-        if (board != TaskBoard.completed)
-          QuickAddBar(
-            focusNode: quickAddFocus,
-            onSubmit: (raw) async {
-              final parsed = parseQuickAdd(raw, now: DateTime.now());
-              if (parsed.title.trim().isEmpty) {
-                return;
-              }
-              await Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (context) => TaskComposerPage(
-                    listId: board == TaskBoard.list ? listId : null,
-                    initialTitle: parsed.title,
-                    initialStart: parsed.due,
-                    initialHasTime: parsed.hasTime,
-                  ),
-                ),
-              );
-            },
-          ),
       ],
+    );
+    if (onCreate == null || board == TaskBoard.completed) {
+      return column;
+    }
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        key: const Key('create-task'),
+        tooltip: copy.createTask,
+        onPressed: onCreate,
+        child: const Icon(Icons.add),
+      ),
+      body: column,
     );
   }
 }

@@ -9,12 +9,13 @@ import '../domain/models.dart';
 import '../l10n/copy.dart';
 import '../reminders/os_notifications.dart';
 import '../update/app_update.dart';
+import 'add_sheet.dart';
 import 'calendar_pane.dart';
-import 'task_composer.dart';
 import 'detail_pane.dart';
 import 'list_pane.dart';
 import 'settings_pane.dart';
 import 'task_pane.dart';
+import 'today_home.dart';
 import 'tools_pane.dart';
 import 'widgets.dart';
 
@@ -58,9 +59,9 @@ class _TasShellState extends State<TasShell> {
   int _tab = 1;
   _Drill? _drill;
   var _tabReady = false;
+  var _boardReady = false;
   late DateTime _month;
   late DateTime _day;
-  final _quickAdd = FocusNode();
   final _search = FocusNode();
   final _searchController = TextEditingController();
   final _notices = <TaskModel>[];
@@ -85,6 +86,15 @@ class _TasShellState extends State<TasShell> {
     if (!_tabReady) {
       _tab = repo.homeTab.clamp(0, 3);
       _tabReady = true;
+    }
+    if (!_boardReady) {
+      _boardReady = true;
+      _board = switch (repo.homeTab.clamp(0, 3)) {
+        0 => TaskBoard.inbox,
+        2 => TaskBoard.calendar,
+        1 => TaskBoard.today,
+        _ => TaskBoard.inbox,
+      };
     }
     if (repo.tools.pomoRunning) {
       _pomoTimer ??= Timer.periodic(const Duration(seconds: 1), (_) {
@@ -147,7 +157,6 @@ class _TasShellState extends State<TasShell> {
     _reminderTimer?.cancel();
     _syncTimer?.cancel();
     _pomoTimer?.cancel();
-    _quickAdd.dispose();
     _search.dispose();
     _searchController.dispose();
     super.dispose();
@@ -242,16 +251,12 @@ class _TasShellState extends State<TasShell> {
     final listId = desktop
         ? (board == TaskBoard.list ? _listId : null)
         : (_drill?.board == TaskBoard.list ? _drill?.listId : null);
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => TaskComposerPage(
-          listId: listId,
-          applyBoardDate: true,
-          board: board,
-          day: board == TaskBoard.calendar ? _day : null,
-        ),
-      ),
-    );
+    final day = board == TaskBoard.calendar
+        ? _day
+        : board == TaskBoard.today
+        ? DateTime.now()
+        : null;
+    showAddSheet(context, listId: listId, day: day);
   }
 
   void _openSettings(bool desktop) {
@@ -496,10 +501,11 @@ class _TasShellState extends State<TasShell> {
               _month = DateTime(value.year, value.month);
             }),
             onOpen: (id) => _openTask(id, desktop: true),
-            quickAddFocus: _quickAdd,
             searchFocus: _search,
             onQuery: (value) => setState(() => _query = value),
           )
+        : _board == TaskBoard.today
+        ? TodayHome(onOpen: (id) => _openTask(id, desktop: true))
         : TaskPane(
             board: _board,
             listId: _listId,
@@ -511,7 +517,6 @@ class _TasShellState extends State<TasShell> {
             onOpen: (id) => _openTask(id, desktop: true),
             onQuery: (value) => setState(() => _query = value),
             searchFocus: _search,
-            quickAddFocus: _quickAdd,
             onCreate: () => _openCreate(true),
           );
     return Row(
@@ -603,6 +608,9 @@ class _TasShellState extends State<TasShell> {
         onCreateTask: () => _openCreate(false),
       );
     }
+    if (_tab == 1 && _drill == null) {
+      return TodayHome(onOpen: (id) => _openTask(id, desktop: false));
+    }
     if (_tab == 3 && _drill == null) {
       return ToolsMenu(
         onOpen: (id) => setState(() => _drill = _Drill.tool(id)),
@@ -634,8 +642,7 @@ class _TasShellState extends State<TasShell> {
                 _month = DateTime(value.year, value.month);
               }),
             onOpen: (id) => _openTask(id, desktop: false),
-            quickAddFocus: _quickAdd,
-              searchFocus: _search,
+            searchFocus: _search,
               onQuery: (value) => setState(() => _query = value),
             ),
           ),
@@ -657,7 +664,6 @@ class _TasShellState extends State<TasShell> {
             onOpen: (id) => _openTask(id, desktop: false),
             onQuery: (value) => setState(() => _query = value),
             searchFocus: _search,
-            quickAddFocus: _quickAdd,
             onCreate: () => _openCreate(false),
           ),
         ),
@@ -695,22 +701,7 @@ class _TasShellState extends State<TasShell> {
   }
 
   void _focusNew(bool desktop) {
-    if (!desktop &&
-        (_drill?.tool != null || (_tab == 0 && _drill == null) || _tab == 3)) {
-      setState(() {
-        _tab = 0;
-        _drill = const _Drill.board(TaskBoard.inbox);
-      });
-    } else if (desktop &&
-        (_board == TaskBoard.settings || _desktopTool != null)) {
-      setState(() {
-        _desktopTool = null;
-        _board = TaskBoard.inbox;
-      });
-    }
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _quickAdd.requestFocus(),
-    );
+    _openCreate(desktop);
   }
 
   void _focusSearch(bool desktop) {

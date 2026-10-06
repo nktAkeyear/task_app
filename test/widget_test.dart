@@ -12,7 +12,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
-  testWidgets('quick add parses 今日 and shows the task on 今日', (tester) async {
+  testWidgets('text import parses 今日 and waits to confirm', (tester) async {
     final repo = TaskRepository(
       TasDatabase.memory(),
       now: () => DateTime(2026, 10, 1, 9),
@@ -26,54 +26,37 @@ void main() {
     await tester.pumpWidget(TasApp(repository: repo));
     await tester.pump();
 
-    await tester.tap(find.byKey(const Key('nav-today')));
-    await tester.pump();
     expect(find.text('今日のタスクはありません。'), findsOneWidget);
+    expect(find.byKey(const Key('quick-add-field')), findsNothing);
 
-    await tester.enterText(
-      find.byKey(const Key('quick-add-field')),
-      '資料を送る 今日',
-    );
-    await tester.tap(find.byKey(const Key('quick-add-submit')));
+    await tester.tap(find.byKey(const Key('create-task')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('タスクを作成'), findsOneWidget);
-    expect(find.text('資料を送る'), findsWidgets);
-
+    await tester.enterText(find.byKey(const Key('create-title')), '下書き');
     await tester.binding.handlePopRoute();
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('タスクを作成'), findsNothing);
-    expect(find.text('資料を送る'), findsNothing);
+    expect(find.text('下書き'), findsNothing);
     expect(find.text('今日のタスクはありません。'), findsOneWidget);
 
+    await tester.tap(find.byKey(const Key('create-task')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('text-import')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.enterText(
-      find.byKey(const Key('quick-add-field')),
-      '資料を送る 今日',
+      find.byKey(const Key('text-import-input')),
+      '資料を送る 今日\nいつか読む',
     );
-    await tester.tap(find.byKey(const Key('quick-add-submit')));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.byKey(const Key('create-save')));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('タスクを作成'), findsNothing);
     expect(find.text('資料を送る'), findsWidgets);
+    expect(find.text('いつか読む'), findsWidgets);
 
-    await tester.tap(find.text('リスト').first);
-    await tester.pump();
-    await tester.tap(find.text('受信箱').first);
-    await tester.pump();
-    await tester.enterText(find.byKey(const Key('quick-add-field')), 'いつか読む');
-    await tester.tap(find.byKey(const Key('quick-add-submit')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.byKey(const Key('create-save')));
+    await tester.tap(find.byKey(const Key('text-import-save')));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-
-    await tester.tap(find.byKey(const Key('nav-today')));
-    await tester.pump();
     expect(find.text('資料を送る'), findsWidgets);
     expect(find.text('いつか読む'), findsNothing);
   });
@@ -97,11 +80,11 @@ void main() {
     expect(find.byKey(const Key('pane-detail')), findsOneWidget);
     expect(find.text('タスクを選ぶと、メモや期限を編集できます。'), findsOneWidget);
 
-    await tester.enterText(find.byKey(const Key('quick-add-field')), '机を片付ける');
-    await tester.tap(find.byKey(const Key('quick-add-submit')));
+    await tester.tap(find.byKey(const Key('create-task')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const Key('create-title')), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('create-title')), '机を片付ける');
     await tester.tap(find.byKey(const Key('create-save')));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -256,6 +239,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('水を飲む'), findsOneWidget);
     expect(find.text('連続 0 日'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.check).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('連続 1 日'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.check).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('連続 0 日'), findsOneWidget);
 
     await tester.tap(find.text('戻る'));
     await tester.pump();
@@ -322,10 +313,11 @@ void main() {
     );
     await repo.init();
     await repo.setLanguage('en');
+    final today = DateTime.now();
     await repo.createTask(
       title: 'Read later',
       listId: inboxId,
-      due: DateTime(2026, 10, 1),
+      due: DateTime(today.year, today.month, today.day),
     );
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

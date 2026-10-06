@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../app.dart';
 import '../data/task_repository.dart';
+import '../domain/home_layout.dart';
 import '../l10n/copy.dart';
 import '../update/app_update.dart';
 
@@ -140,6 +141,14 @@ class _SettingsPaneState extends State<SettingsPane> {
               ),
           ],
         ),
+        const SizedBox(height: 16),
+        _Head(copy.homeLayout),
+        for (var index = 0; index < parseHomeLayout(repo.homeLayout).length; index++)
+          _HomeRow(
+            index: index,
+            blocks: parseHomeLayout(repo.homeLayout),
+            onChanged: repo.setHomeLayout,
+          ),
         const SizedBox(height: 16),
         _Head(copy.pomodoro),
         Wrap(
@@ -429,6 +438,65 @@ class _Minutes extends StatelessWidget {
             onChanged(parsed);
           }
         },
+      ),
+    );
+  }
+}
+
+class _HomeRow extends StatelessWidget {
+  const _HomeRow({
+    required this.index,
+    required this.blocks,
+    required this.onChanged,
+  });
+
+  final int index;
+  final List<HomeBlock> blocks;
+  final ValueChanged<List<HomeBlock>> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final copy = Copy.of(context);
+    final block = blocks[index];
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(copy.homeSection(block.id)),
+      leading: Switch(
+        value: block.visible,
+        onChanged: (value) {
+          final next = [...blocks];
+          next[index] = HomeBlock(block.id, value);
+          onChanged(next);
+        },
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: copy.move,
+            onPressed: index == 0
+                ? null
+                : () {
+                    final next = [...blocks];
+                    final moved = next.removeAt(index);
+                    next.insert(index - 1, moved);
+                    onChanged(next);
+                  },
+            icon: const Icon(Icons.keyboard_arrow_up),
+          ),
+          IconButton(
+            tooltip: copy.move,
+            onPressed: index == blocks.length - 1
+                ? null
+                : () {
+                    final next = [...blocks];
+                    final moved = next.removeAt(index);
+                    next.insert(index + 1, moved);
+                    onChanged(next);
+                  },
+            icon: const Icon(Icons.keyboard_arrow_down),
+          ),
+        ],
       ),
     );
   }

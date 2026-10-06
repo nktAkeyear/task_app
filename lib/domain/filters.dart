@@ -5,6 +5,30 @@ DateTime startOfDay(DateTime value) => DateTime(value.year, value.month, value.d
 bool sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
 /// True when [day] falls on the start, or between the start and end inclusive.
+bool isOverdue(TaskModel task, DateTime now) {
+  if (task.deleted || task.isCompleted || task.dueAt == null) {
+    return false;
+  }
+  final end = startOfDay(task.endsAt ?? task.dueAt!);
+  return end.isBefore(startOfDay(now));
+}
+
+List<TaskModel> daySchedule(List<TaskModel> tasks, DateTime day) {
+  final items = tasks
+      .where((task) => !task.deleted && !task.isCompleted && coversDay(task, day))
+      .toList();
+  items.sort((a, b) {
+    if (a.dueHasTime != b.dueHasTime) {
+      return a.dueHasTime ? -1 : 1;
+    }
+    if (a.dueHasTime && b.dueHasTime) {
+      return a.dueAt!.compareTo(b.dueAt!);
+    }
+    return a.sortOrder.compareTo(b.sortOrder);
+  });
+  return items;
+}
+
 bool coversDay(TaskModel task, DateTime day) {
   final start = task.dueAt;
   if (start == null) {

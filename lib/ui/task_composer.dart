@@ -6,14 +6,21 @@ import '../domain/filters.dart';
 import '../domain/models.dart';
 import '../domain/recurrence.dart';
 import '../l10n/copy.dart';
+import 'when_picker.dart';
 
 class TaskComposerPage extends StatefulWidget {
   const TaskComposerPage({
     this.taskId,
     this.listId,
     this.initialTitle = '',
+    this.initialNotes = '',
     this.initialStart,
+    this.initialEnd,
     this.initialHasTime = false,
+    this.initialPriority = 0,
+    this.initialRecurrence = recurrenceNone,
+    this.initialReminder = reminderNone,
+    this.initialTagIds = const [],
     this.applyBoardDate = false,
     this.board,
     this.day,
@@ -23,8 +30,14 @@ class TaskComposerPage extends StatefulWidget {
   final String? taskId;
   final String? listId;
   final String initialTitle;
+  final String initialNotes;
   final DateTime? initialStart;
+  final DateTime? initialEnd;
   final bool initialHasTime;
+  final int initialPriority;
+  final String initialRecurrence;
+  final String initialReminder;
+  final List<String> initialTagIds;
   final bool applyBoardDate;
   final TaskBoard? board;
   final DateTime? day;
@@ -71,7 +84,13 @@ class _TaskComposerPageState extends State<TaskComposerPage> {
       return;
     }
     _title.text = widget.initialTitle;
+    _notes.text = widget.initialNotes;
     _listId = widget.listId ?? inboxId;
+    _priority = widget.initialPriority;
+    _recurrence = widget.initialRecurrence;
+    _reminder = widget.initialReminder;
+    _end = widget.initialEnd;
+    _tagIds.addAll(widget.initialTagIds);
     if (widget.initialStart != null) {
       _start = widget.initialStart;
       _allDay = !widget.initialHasTime;
@@ -134,7 +153,7 @@ class _TaskComposerPageState extends State<TaskComposerPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                _ScheduleCard(
+                ScheduleCard(
                   copy: copy,
                   scheme: scheme,
                   allDay: _allDay,
@@ -278,11 +297,9 @@ class _TaskComposerPageState extends State<TaskComposerPage> {
   Future<void> _pickDate({required bool isEnd}) async {
     final now = DateTime.now();
     final current = isEnd ? (_end ?? _start) : _start;
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: current ?? now,
-      firstDate: DateTime(now.year - 5),
-      lastDate: DateTime(now.year + 10),
+    final picked = await showMonthCalendar(
+      context,
+      initial: current ?? now,
     );
     if (picked == null || !mounted) {
       return;
@@ -300,11 +317,11 @@ class _TaskComposerPageState extends State<TaskComposerPage> {
 
   Future<void> _pickTime({required bool isEnd}) async {
     final current = isEnd ? (_end ?? _start) : _start;
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(
-        current ?? DateTime.now().copyWith(hour: isEnd ? 10 : 9, minute: 0),
-      ),
+    final now = DateTime.now();
+    final seed = current ?? DateTime(now.year, now.month, now.day, isEnd ? 10 : 9);
+    final picked = await showWheelTime(
+      context,
+      initial: TimeOfDay(hour: seed.hour, minute: seed.minute),
     );
     if (picked == null || !mounted) {
       return;
@@ -695,8 +712,9 @@ List<ListModel> _visibleLists(TaskRepository repo) {
   return lists;
 }
 
-class _ScheduleCard extends StatelessWidget {
-  const _ScheduleCard({
+class ScheduleCard extends StatelessWidget {
+  const ScheduleCard({
+    super.key,
     required this.copy,
     required this.scheme,
     required this.allDay,
@@ -831,53 +849,91 @@ class _WhenRow extends StatelessWidget {
         ? copy.pickTime
         : '${value!.hour.toString().padLeft(2, '0')}:${value!.minute.toString().padLeft(2, '0')}';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 64,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-          Expanded(
-            child: InkWell(
-              key: dateKey,
-              onTap: onDate,
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+          Row(
+            children: [
+              Expanded(
                 child: Text(
-                  date,
+                  label,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (onClear != null)
+                IconButton(
+                  tooltip: clearTooltip,
+                  onPressed: onClear,
+                  icon: const Icon(Icons.close),
+                ),
+            ],
+          ),
+          _WhenChoice(
+            choiceKey: dateKey,
+            label: date,
+            muted: value == null,
+            scheme: scheme,
+            onTap: onDate,
+          ),
+          if (!allDay) ...[
+            const SizedBox(height: 6),
+            _WhenChoice(
+              choiceKey: timeKey,
+              label: time,
+              muted: value == null,
+              scheme: scheme,
+              onTap: onTime,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _WhenChoice extends StatelessWidget {
+  const _WhenChoice({
+    required this.choiceKey,
+    required this.label,
+    required this.muted,
+    required this.scheme,
+    required this.onTap,
+  });
+
+  final Key choiceKey;
+  final String label;
+  final bool muted;
+  final ColorScheme scheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        key: choiceKey,
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
                   style: TextStyle(
                     fontSize: 16,
-                    color: value == null ? scheme.onSurfaceVariant : null,
+                    fontWeight: FontWeight.w600,
+                    color: muted ? scheme.onSurfaceVariant : scheme.onSurface,
                   ),
                 ),
               ),
-            ),
+              Icon(Icons.expand_more, color: scheme.onSurfaceVariant),
+            ],
           ),
-          if (!allDay)
-            InkWell(
-              key: timeKey,
-              onTap: onTime,
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                child: Text(
-                  time,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-          if (onClear != null)
-            IconButton(
-              tooltip: clearTooltip,
-              onPressed: onClear,
-              icon: const Icon(Icons.close),
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -1006,7 +1062,7 @@ class TaskFactView extends StatelessWidget {
             ),
           ),
         ),
-        _ScheduleCard(
+        ScheduleCard(
           copy: copy,
           scheme: scheme,
           allDay: allDay,

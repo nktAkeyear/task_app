@@ -28,6 +28,63 @@ class TasMark extends StatelessWidget {
   }
 }
 
+class HabitCheck extends StatefulWidget {
+  const HabitCheck({
+    required this.checked,
+    required this.color,
+    required this.onTap,
+    this.checkKey,
+    super.key,
+  });
+
+  final bool checked;
+  final Color color;
+  final VoidCallback onTap;
+  final Key? checkKey;
+
+  @override
+  State<HabitCheck> createState() => _HabitCheckState();
+}
+
+class _HabitCheckState extends State<HabitCheck> {
+  var _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      key: widget.checkKey,
+      onTap: () async {
+        setState(() => _pressed = true);
+        widget.onTap();
+        await Future<void>.delayed(const Duration(milliseconds: 140));
+        if (mounted) {
+          setState(() => _pressed = false);
+        }
+      },
+      child: AnimatedScale(
+        scale: _pressed ? 0.86 : 1,
+        duration: const Duration(milliseconds: 140),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: 64,
+          height: 64,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: widget.checked ? widget.color : Colors.transparent,
+            border: Border.all(color: widget.color, width: 3),
+          ),
+          child: Icon(
+            Icons.check,
+            color: widget.checked ? Colors.white : widget.color,
+            size: 32,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class EmptyHint extends StatelessWidget {
   const EmptyHint({
     required this.message,

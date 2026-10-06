@@ -7,12 +7,15 @@ The interface is Japanese. Code, identifiers, and this README are English.
 ## What it does
 
 - Smart lists: 受信箱, 今日, 近日 (7 days), カレンダー, 完了, plus user lists (color, sort, archive, delete).
-- Quick add with simple Japanese date phrases (今日, 明日, 来週, weekdays, times). It only prefills the composer; the task is stored when you save.
-- Task composer, shared by create and edit: title, all-day, start and end, repeat, reminder, list color, priority, tags, and a memo. An empty end is a single due point. The detail view uses the same rows and opens that editor.
+- The home screen is a week strip and that day’s schedule (timed items, then all-day). Settings can show, hide, and reorder the week, the schedule, overdue tasks, and today’s habits.
+- The + button opens a sheet (title, list, priority, tags, memo, and the date controls). Save stays on the sheet. Details opens the full editor. Quick add no longer sits beside the button.
+- Dates open a month calendar and times open hour and minute wheels, in the app language. All-day hides the wheels. An empty end is a single due point.
+- Habits complete from the circle itself, on the habit screen and on today’s habits. The streak updates immediately.
+- 「文章から追加」 turns pasted text or a text file into tasks. Lines, or sentences when there are no line breaks, are previewed and can be edited. Japanese date phrases, times, and priority words are applied. Nothing is stored until confirm.
 - Reorder, complete with undo, swipe on narrow layouts, desktop keyboard shortcuts.
 - Search across title and notes.
-- The + button and quick add both open the full-screen composer. Nothing is written until save.
-- Phone back follows the in-app stack (lists, today, calendar, tools, and the create form) and leaves the app only when that stack is empty.
+- Task composer, shared by create details and edit: title, all-day, start and end, repeat, reminder, list color, priority, tags, and a memo. The detail view uses the same rows and opens that editor.
+- Tab switches do not push history. The home tab root has no back button. From another tab root, system back returns to the home tab once. System back pops only a real drill-in, such as a list or the full editor.
 - Offline tools, kept off the main three tabs: ポモドーロ (focus, short break, and long break minutes, optional task, finished-session count, remaining time on other screens), Eisenhower matrix (重要×緊急), daily habits (check, streak, last 7 days, color, archive, optional reminder), and one diary entry per day. They live in the same SQLite file and are not part of sync.
 - Settings store the accent color, language (日本語, English, 한국어), home tab (default 今日), and pomodoro durations. On launch, and from settings, the app checks GitHub for a newer release when online and asks before downloading an APK.
 - Light, dark, and system themes.
@@ -22,7 +25,7 @@ The interface is Japanese. Code, identifiers, and this README are English.
 
 ## Requirements
 
-- Flutter 3.47 or newer (this tree was built with Flutter 3.47.5 / Dart 3.13).
+- Flutter 3.47 or newer (this tree was built with Flutter 3.47.6 / Dart 3.13).
 - Android: Android SDK (the app module uses Flutter's default compileSdk). Release builds currently sign with the debug keystore; replace that before publishing.
 - Windows: Visual Studio with the "Desktop development with C++" workload.
 - Linux (dev): clang, cmake, ninja, gtk-3, sqlite3, and a CJK font such as Noto Sans CJK JP.

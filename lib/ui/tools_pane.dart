@@ -592,30 +592,14 @@ class _HabitCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InkWell(
-              key: Key('habit-check-${habit.id}'),
-              customBorder: const CircleBorder(),
+            HabitCheck(
+              checked: habit.checkedToday,
+              color: Color(habit.color),
+              checkKey: Key('habit-check-${habit.id}'),
               onTap: () async {
                 await tools.toggleHabitToday(habit.id);
                 await onChanged();
               },
-              child: Container(
-                width: 56,
-                height: 56,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: habit.checkedToday
-                      ? Color(habit.color)
-                      : Colors.transparent,
-                  border: Border.all(color: Color(habit.color), width: 3),
-                ),
-                child: Icon(
-                  Icons.check,
-                  color: habit.checkedToday ? Colors.white : Color(habit.color),
-                  size: 28,
-                ),
-              ),
             ),
             const SizedBox(width: 12),
             Expanded(

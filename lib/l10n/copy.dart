@@ -170,10 +170,36 @@ class Copy {
     );
   }
 
+  String monthYear(DateTime month) {
+    return pick(
+      '${month.year}年${month.month}月',
+      '${_enMonthFull(month.month)} ${month.year}',
+      '${month.year}년 ${month.month}월',
+    );
+  }
+
   List<String> get weekdays =>
       pick('月,火,水,木,金,土,日', 'Mo,Tu,We,Th,Fr,Sa,Su', '월,화,수,목,금,토,일').split(',');
 
   String _weekday(DateTime value) => weekdays[value.weekday - 1];
+
+  String _enMonthFull(int month) {
+    const names = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return names[month - 1];
+  }
 
   String _enMonth(int month) {
     const names = [
@@ -362,6 +388,46 @@ class Copy {
   String get accent => pick('アクセント', 'Accent', '강조색');
   String get language => pick('言語', 'Language', '언어');
   String get homeTab => pick('起動時のタブ', 'Home tab', '시작 탭');
+  String get homeLayout => pick('ホームの並び', 'Home layout', '홈 구성');
+  String homeSection(String id) {
+    return switch (id) {
+      'week' => pick('週', 'Week', '주'),
+      'schedule' => pick('その日の予定', 'That day’s schedule', '그 날의 일정'),
+      'overdue' => pick('期限切れ', 'Overdue', '기한 지남'),
+      _ => pick('今日の習慣', 'Today’s habits', '오늘의 습관'),
+    };
+  }
+  String get scheduleEmpty => pick(
+    'この日の予定はありません。',
+    'Nothing scheduled this day.',
+    '이 날의 일정이 없습니다.',
+  );
+  String get overdueEmpty => pick(
+    '期限切れのタスクはありません。',
+    'Nothing overdue.',
+    '기한이 지난 할 일이 없습니다.',
+  );
+  String get timedItems => pick('時刻', 'Timed', '시간');
+  String get fromText => pick('文章から追加', 'Add from text', '글에서 추가');
+  String get moreDetails => pick('詳しく', 'Details', '자세히');
+  String get textImportHint =>
+      pick('文章を貼り付け', 'Paste text', '글을 붙여넣기');
+  String get pickTextFile =>
+      pick('テキストファイル', 'Text file', '텍스트 파일');
+  String get importPreview =>
+      pick('追加するタスク', 'Tasks to add', '추가할 할 일');
+  String get confirmAdd => pick('追加する', 'Add', '추가');
+  String get textImportEmpty => pick(
+    'タスクになる行がありません。',
+    'No tasks to add.',
+    '추가할 할 일이 없습니다.',
+  );
+  String get textImportFailed => pick(
+    'テキストを読めませんでした。',
+    'Could not read that text.',
+    '글을 읽지 못했습니다.',
+  );
+  String get doneLabel => pick('決定', 'Done', '확인');
   String get thisDevice => pick('この端末', 'This device', '이 기기');
   String get deviceName => pick('端末名', 'Device name', '기기 이름');
   String get saveDevice => pick('端末名を保存', 'Save device name', '기기 이름 저장');

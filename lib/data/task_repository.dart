@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../domain/date_phrase.dart';
 import '../domain/filters.dart';
 import '../domain/hlc.dart';
+import '../domain/home_layout.dart';
 import '../domain/models.dart';
 import '../domain/recurrence.dart';
 import '../sync/protocol.dart';
@@ -67,6 +68,7 @@ class TaskRepository extends ChangeNotifier {
   String language = 'ja';
   int accent = 0xFF1C4E4A;
   int homeTab = 1;
+  String homeLayout = defaultHomeLayout;
   int pomoFocusMin = 25;
   int pomoShortMin = 5;
   int pomoLongMin = 15;
@@ -761,6 +763,10 @@ class TaskRepository extends ChangeNotifier {
     return _commit(() => _setSetting('homeTab', value.toString()));
   }
 
+  Future<void> setHomeLayout(List<HomeBlock> blocks) {
+    return _commit(() => _setSetting('homeLayout', encodeHomeLayout(blocks)));
+  }
+
   Future<void> setPomoDurations({
     required int focus,
     required int shortBreak,
@@ -1056,6 +1062,7 @@ class TaskRepository extends ChangeNotifier {
     };
     accent = int.tryParse(await _setting('accent') ?? '') ?? 0xFF1C4E4A;
     homeTab = (int.tryParse(await _setting('homeTab') ?? '') ?? 1).clamp(0, 3);
+    homeLayout = await _setting('homeLayout') ?? defaultHomeLayout;
     pomoFocusMin = int.tryParse(await _setting('pomoFocusMin') ?? '') ?? 25;
     pomoShortMin = int.tryParse(await _setting('pomoShortMin') ?? '') ?? 5;
     pomoLongMin = int.tryParse(await _setting('pomoLongMin') ?? '') ?? 15;
