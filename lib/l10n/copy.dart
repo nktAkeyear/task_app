@@ -426,6 +426,10 @@ class Copy {
       pick('もう一歩です。', "You're one step closer!", '한 걸음 더 가까워졌어요.');
   String get customMinutes => pick('何分前', 'Minutes before', '몇 분 전');
   String habitProgress(int current, int goal) => '$current/$goal';
+  String dailyGoal(int count) =>
+      pick('1日の目標 $count', 'Daily goal $count', '하루 목표 $count');
+  String get decreaseGoal => pick('目標を減らす', 'Lower the goal', '목표 줄이기');
+  String get increaseGoal => pick('目標を増やす', 'Raise the goal', '목표 늘리기');
   String homeSection(String id) {
     return switch (id) {
       'week' => pick('週', 'Week', '주'),

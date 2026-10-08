@@ -38,4 +38,50 @@ void main() {
     expect(again.finishedSessions, 1);
     expect(again.pomoFocus, isFalse);
   });
+
+  test('a quantity goal counts a slide as one step and streaks only when met', () async {
+    final db = TasDatabase.memory();
+    final tools = LocalTools(
+      db,
+      now: () => DateTime(2026, 10, 1, 9),
+      onChanged: () {},
+    );
+    await tools.load();
+
+    await tools.addHabit('水を飲む', goal: 3);
+    final id = tools.habits.single.id;
+    await tools.logHabit(id);
+    expect(tools.habits.single.progress, 1);
+    expect(tools.habits.single.goal, 3);
+    expect(tools.habits.single.checkedToday, isFalse);
+    expect(tools.habits.single.streak, 0);
+
+    await tools.logHabit(id);
+    expect(tools.habits.single.streak, 0);
+    await tools.logHabit(id);
+    expect(tools.habits.single.progress, 3);
+    expect(tools.habits.single.checkedToday, isTrue);
+    expect(tools.habits.single.streak, 1);
+  });
+
+  test('a one-step habit completes on one slide and on one tap', () async {
+    final db = TasDatabase.memory();
+    final tools = LocalTools(
+      db,
+      now: () => DateTime(2026, 10, 1, 9),
+      onChanged: () {},
+    );
+    await tools.load();
+
+    await tools.addHabit('読む');
+    final id = tools.habits.single.id;
+    await tools.logHabit(id);
+    expect(tools.habits.single.streak, 1);
+    await tools.logHabit(id);
+    expect(tools.habits.single.streak, 0);
+    await tools.logHabit(id, toggle: true);
+    expect(tools.habits.single.streak, 1);
+    await tools.logHabit(id, toggle: true);
+    expect(tools.habits.single.streak, 0);
+  });
 }

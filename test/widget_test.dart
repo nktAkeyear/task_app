@@ -269,6 +269,58 @@ void main() {
     expect(find.text('開始'), findsOneWidget);
   });
 
+  testWidgets('a habit goal above one shows partial progress before the streak', (
+    tester,
+  ) async {
+    final repo = TaskRepository(
+      TasDatabase.memory(),
+      now: () => DateTime(2026, 10, 1, 9),
+    );
+    await repo.init();
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(TasApp(repository: repo));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('nav-tools')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('tool-habits')));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('habit-goal-more')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('habit-goal-more')));
+    await tester.pump();
+    expect(find.text('1日の目標 3'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '水を飲む');
+    await tester.tap(find.text('追加'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('0/3'), findsOneWidget);
+    expect(find.text('連続 0 日'), findsOneWidget);
+
+    await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('1/3'), findsOneWidget);
+    expect(find.text('連続 0 日'), findsOneWidget);
+
+    await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('2/3'), findsOneWidget);
+    expect(find.text('連続 0 日'), findsOneWidget);
+
+    await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('3/3'), findsOneWidget);
+    expect(find.text('連続 1 日'), findsOneWidget);
+  });
+
   test('inbox and backup dialog titles follow the language', () {
     final inbox = ListModel(
       id: inboxId,

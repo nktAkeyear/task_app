@@ -535,6 +535,7 @@ class HabitsPage extends StatefulWidget {
 
 class _HabitsPageState extends State<HabitsPage> {
   final _name = TextEditingController();
+  var _goal = 1;
 
   @override
   void dispose() {
@@ -550,19 +551,40 @@ class _HabitsPageState extends State<HabitsPage> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
+          child: Column(
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _name,
-                  decoration: InputDecoration(hintText: copy.newHabit),
-                  onSubmitted: _add,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _name,
+                      decoration: InputDecoration(hintText: copy.newHabit),
+                      onSubmitted: _add,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => _add(_name.text),
+                    child: Text(copy.add),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: () => _add(_name.text),
-                child: Text(copy.add),
+              Row(
+                children: [
+                  Expanded(child: Text(copy.dailyGoal(_goal))),
+                  IconButton(
+                    key: const Key('habit-goal-less'),
+                    tooltip: copy.decreaseGoal,
+                    onPressed: _goal <= 1 ? null : () => setState(() => _goal -= 1),
+                    icon: const Icon(Icons.remove),
+                  ),
+                  IconButton(
+                    key: const Key('habit-goal-more'),
+                    tooltip: copy.increaseGoal,
+                    onPressed: _goal >= 99 ? null : () => setState(() => _goal += 1),
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
               ),
             ],
           ),
@@ -591,12 +613,18 @@ class _HabitsPageState extends State<HabitsPage> {
   }
 
   Future<void> _add(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
     final tools = RepoScope.of(context).tools;
-    await tools.addHabit(name);
+    final goal = _goal;
+    await tools.addHabit(trimmed, goal: goal);
     if (!mounted) {
       return;
     }
     _name.clear();
+    setState(() => _goal = 1);
     await _sync();
   }
 
