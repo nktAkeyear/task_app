@@ -439,7 +439,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const Key('composer-start-time')), findsNothing);
-    expect(find.text('終了'), findsOneWidget);
+    expect(find.byKey(const Key('composer-end-date')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('composer-all-day')));
     await tester.pump();

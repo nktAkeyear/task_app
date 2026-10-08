@@ -9,6 +9,7 @@ import '../domain/date_phrase.dart';
 import '../domain/filters.dart';
 import '../domain/hlc.dart';
 import '../domain/home_layout.dart';
+import '../domain/tab_layout.dart';
 import '../domain/models.dart';
 import '../domain/recurrence.dart';
 import '../sync/protocol.dart';
@@ -69,6 +70,7 @@ class TaskRepository extends ChangeNotifier {
   int accent = 0xFF1C4E4A;
   int homeTab = 1;
   String homeLayout = defaultHomeLayout;
+  String tabLayout = defaultTabLayout;
   int pomoFocusMin = 25;
   int pomoShortMin = 5;
   int pomoLongMin = 15;
@@ -759,12 +761,16 @@ class TaskRepository extends ChangeNotifier {
   }
 
   Future<void> setHomeTab(int tab) {
-    final value = tab.clamp(0, 3);
+    final value = tab.clamp(0, tabIds.length - 1);
     return _commit(() => _setSetting('homeTab', value.toString()));
   }
 
   Future<void> setHomeLayout(List<HomeBlock> blocks) {
     return _commit(() => _setSetting('homeLayout', encodeHomeLayout(blocks)));
+  }
+
+  Future<void> setTabLayout(List<TabItem> items) {
+    return _commit(() => _setSetting('tabLayout', encodeTabLayout(items)));
   }
 
   Future<void> setPomoDurations({
@@ -1061,8 +1067,9 @@ class TaskRepository extends ChangeNotifier {
       _ => 'ja',
     };
     accent = int.tryParse(await _setting('accent') ?? '') ?? 0xFF1C4E4A;
-    homeTab = (int.tryParse(await _setting('homeTab') ?? '') ?? 1).clamp(0, 3);
+    homeTab = (int.tryParse(await _setting('homeTab') ?? '') ?? 1).clamp(0, tabIds.length - 1);
     homeLayout = await _setting('homeLayout') ?? defaultHomeLayout;
+    tabLayout = await _setting('tabLayout') ?? defaultTabLayout;
     pomoFocusMin = int.tryParse(await _setting('pomoFocusMin') ?? '') ?? 25;
     pomoShortMin = int.tryParse(await _setting('pomoShortMin') ?? '') ?? 5;
     pomoLongMin = int.tryParse(await _setting('pomoLongMin') ?? '') ?? 15;

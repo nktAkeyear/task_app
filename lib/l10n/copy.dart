@@ -182,6 +182,27 @@ class Copy {
     );
   }
 
+  String drumDate(DateTime day) {
+    return pick(
+      '${day.month}月${day.day}日(${_weekday(day)})',
+      '${_enMonth(day.month)} ${day.day}',
+      '${day.month}월 ${day.day}일 (${_weekday(day)})',
+    );
+  }
+
+  String monthShort(int month) => pick('$month月', _enMonth(month), '$month월');
+
+  String get amLabel => pick('午前', 'AM', '오전');
+  String get pmLabel => pick('午後', 'PM', '오후');
+
+  String halfClock(DateTime value) {
+    final afternoon = value.hour >= 12;
+    final hour12 = value.hour % 12 == 0 ? 12 : value.hour % 12;
+    final minute = value.minute.toString().padLeft(2, '0');
+    final half = afternoon ? pmLabel : amLabel;
+    return '$half $hour12:$minute';
+  }
+
   String monthYear(DateTime month) {
     return pick(
       '${month.year}年${month.month}月',
@@ -401,6 +422,43 @@ class Copy {
   String get language => pick('言語', 'Language', '언어');
   String get homeTab => pick('起動時のタブ', 'Home tab', '시작 탭');
   String get homeLayout => pick('ホームの並び', 'Home layout', '홈 구성');
+  String get tabLayout => pick('タブの並び', 'Tab layout', '탭 구성');
+  String get tabLayoutLead => pick(
+    '表示中のタブは、この順で下に出ます。隠したタブもこの一覧に残ります。',
+    'Shown tabs appear along the bottom in this order. A hidden tab stays in this list.',
+    '보이는 탭은 이 순서로 아래에 나옵니다. 숨긴 탭도 이 목록에 남습니다.',
+  );
+  String get allTabsHidden => pick(
+    'すべてのタブが隠れています。',
+    'Every tab is hidden.',
+    '모든 탭이 숨겨져 있습니다.',
+  );
+  String get resetTabTitle =>
+      pick('タブの並びを戻しますか？', 'Reset tab layout?', '탭 구성을 되돌릴까요?');
+  String get resetTabBody => pick(
+    '5つのタブを、初期の順ですべて表示します。',
+    'Show all five tabs in the default order.',
+    '탭 5개를 기본 순서로 모두 표시합니다.',
+  );
+  String tabLabel(String id) {
+    return switch (id) {
+      'today' => today,
+      'calendar' => calendar,
+      'tools' => tools,
+      'settings' => settings,
+      _ => lists,
+    };
+  }
+
+  String tabDescription(String id) {
+    return switch (id) {
+      'today' => pick('今日のホーム。', 'Today’s home.', '오늘의 홈.'),
+      'calendar' => pick('月の予定。', 'The month.', '한 달의 일정.'),
+      'tools' => pick('習慣、日記、集中。', 'Habits, diary, and focus.', '습관, 일기, 집중.'),
+      'settings' => pick('表示と同期。', 'Appearance and sync.', '표시와 동기화.'),
+      _ => pick('リストと受信箱。', 'Lists and the inbox.', '목록과 받은편지함.'),
+    };
+  }
   String get homeLayoutLead => pick(
     '表示中のブロックは、この順でホームに出ます。隠したブロックもこの一覧に残ります。',
     'Shown blocks appear on Home in this order. A hidden block stays in this list.',

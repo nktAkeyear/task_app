@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../app.dart';
 import '../data/task_repository.dart';
 import '../domain/models.dart';
+import '../domain/tab_layout.dart';
 import '../l10n/copy.dart';
 import '../reminders/os_notifications.dart';
 import '../update/app_update.dart';
@@ -84,14 +85,23 @@ class _TasShellState extends State<TasShell> {
     super.didChangeDependencies();
     final repo = RepoScope.of(context);
     if (!_tabReady) {
-      _tab = repo.homeTab.clamp(0, 3);
+      _tab = repo.homeTab.clamp(0, tabIds.length - 1);
       _tabReady = true;
+      final visible = [
+        for (final item in parseTabLayout(repo.tabLayout))
+          if (item.visible) item.id,
+      ];
+      final id = tabIds[_tab];
+      if (visible.isNotEmpty && !visible.contains(id)) {
+        _tab = tabIndex(visible.first);
+      }
     }
     if (!_boardReady) {
       _boardReady = true;
-      _board = switch (repo.homeTab.clamp(0, 3)) {
+      _board = switch (repo.homeTab.clamp(0, tabIds.length - 1)) {
         0 => TaskBoard.inbox,
         2 => TaskBoard.calendar,
+        4 => TaskBoard.settings,
         1 => TaskBoard.today,
         _ => TaskBoard.inbox,
       };
@@ -214,7 +224,7 @@ class _TasShellState extends State<TasShell> {
       setState(() => _drill = null);
       return;
     }
-    final home = RepoScope.of(context).homeTab.clamp(0, 3);
+    final home = RepoScope.of(context).homeTab.clamp(0, tabIds.length - 1);
     if (_tab != home) {
       setState(() {
         _tab = home;
@@ -264,14 +274,7 @@ class _TasShellState extends State<TasShell> {
       setState(() => _board = TaskBoard.settings);
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: Text(Copy.of(context).settings)),
-          body: const SettingsPane(),
-        ),
-      ),
-    );
+    _selectTab(tabIndex('settings'));
   }
 
   void _openTask(String id, {required bool desktop}) {
@@ -333,7 +336,7 @@ class _TasShellState extends State<TasShell> {
               child: PopScope(
                 canPop:
                     desktop ||
-                    (_drill == null && _tab == repo.homeTab.clamp(0, 3)),
+                    (_drill == null && _tab == repo.homeTab.clamp(0, tabIds.length - 1)),
                 onPopInvokedWithResult: (didPop, _) {
                   if (!didPop) {
                     _popBack();
@@ -616,6 +619,16 @@ class _TasShellState extends State<TasShell> {
         onOpen: (id) => setState(() => _drill = _Drill.tool(id)),
       );
     }
+    if (_tab == tabIndex('settings') && _drill == null) {
+      return const SettingsPane();
+    }
+    final visibleTabs = [
+      for (final item in parseTabLayout(repo.tabLayout))
+        if (item.visible) item.id,
+    ];
+    if (visibleTabs.isEmpty && _drill == null) {
+      return Center(child: Text(copy.allTabsHidden));
+    }
     final board = _drill?.tool == 'search'
         ? TaskBoard.search
         : _drill?.board ??
@@ -671,33 +684,48 @@ class _TasShellState extends State<TasShell> {
     );
   }
 
-  Widget _bottomNav() {
+  Widget? _bottomNav() {
     final copy = Copy.of(context);
+    final visible = [
+      for (final item in parseTabLayout(RepoScope.of(context).tabLayout))
+        if (item.visible) item,
+    ];
+    if (visible.length < 2) {
+      return null;
+    }
+    final current = tabIds[_tab.clamp(0, tabIds.length - 1)];
+    final selected = visible.indexWhere((item) => item.id == current);
     return NavigationBar(
-      selectedIndex: _tab,
-      onDestinationSelected: _selectTab,
+      selectedIndex: selected < 0 ? 0 : selected,
+      onDestinationSelected: (index) => _selectTab(tabIndex(visible[index].id)),
       destinations: [
-        NavigationDestination(
-          icon: const Icon(Icons.list_alt_outlined),
-          label: copy.lists,
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.today_outlined, key: Key('nav-today')),
-          label: copy.today,
-        ),
-        NavigationDestination(
-          icon: const Icon(
-            Icons.calendar_month_outlined,
-            key: Key('nav-calendar'),
+        for (final item in visible)
+          NavigationDestination(
+            icon: Icon(_tabIcon(item.id), key: _tabKey(item.id)),
+            label: copy.tabLabel(item.id),
           ),
-          label: copy.calendar,
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.grid_view_outlined, key: Key('nav-tools')),
-          label: copy.tools,
-        ),
       ],
     );
+  }
+
+  IconData _tabIcon(String id) {
+    return switch (id) {
+      'today' => Icons.today_outlined,
+      'calendar' => Icons.calendar_month_outlined,
+      'tools' => Icons.grid_view_outlined,
+      'settings' => Icons.settings_outlined,
+      _ => Icons.list_alt_outlined,
+    };
+  }
+
+  Key? _tabKey(String id) {
+    return switch (id) {
+      'today' => const Key('nav-today'),
+      'calendar' => const Key('nav-calendar'),
+      'tools' => const Key('nav-tools'),
+      'settings' => const Key('nav-settings'),
+      _ => const Key('nav-lists'),
+    };
   }
 
   void _focusNew(bool desktop) {

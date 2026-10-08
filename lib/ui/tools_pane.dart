@@ -499,31 +499,17 @@ Future<void> logHabitFromUi(
   required bool tap,
   Future<void> Function()? onChanged,
 }) async {
+  final tools = RepoScope.of(context).tools;
   if (tap && habit.goal > 1) {
+    if (!habit.checkedToday) {
+      return;
+    }
+    await tools.setHabitAmount(habit.id, 0);
+    await onChanged?.call();
     return;
   }
-  final tools = RepoScope.of(context).tools;
-  final copy = Copy.of(context);
-  final before = habit.progress;
   await tools.logHabit(habit.id, toggle: tap);
   await onChanged?.call();
-  if (!context.mounted) {
-    return;
-  }
-  final partial = !tap && habit.goal > 1 && before + 1 < habit.goal;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      duration: const Duration(seconds: 4),
-      content: Text(partial ? copy.oneStepCloser : copy.undo),
-      action: SnackBarAction(
-        label: copy.undo,
-        onPressed: () async {
-          await tools.setHabitAmount(habit.id, before);
-          await onChanged?.call();
-        },
-      ),
-    ),
-  );
 }
 
 class HabitsPage extends StatefulWidget {

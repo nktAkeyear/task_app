@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../domain/models.dart';
@@ -52,9 +54,53 @@ class HabitCheck extends StatefulWidget {
   State<HabitCheck> createState() => _HabitCheckState();
 }
 
-class _HabitCheckState extends State<HabitCheck> {
+class _HabitCheckState extends State<HabitCheck> with SingleTickerProviderStateMixin {
   var _pressed = false;
   var _drag = 0.0;
+  late final AnimationController _pop;
+
+  @override
+  void initState() {
+    super.initState();
+    _pop = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
+    if (widget.checked) {
+      _pop.value = 1;
+    }
+  }
+
+  @override
+  void didUpdateWidget(HabitCheck oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.checked && widget.checked) {
+      _pop.forward(from: 0);
+    } else if (oldWidget.checked && !widget.checked) {
+      _pop.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  double get _fill {
+    if (!widget.checked) {
+      return 0;
+    }
+    return (_pop.value / 0.45).clamp(0.0, 1.0);
+  }
+
+  double get _scale {
+    if (_pressed) {
+      return 0.86;
+    }
+    final t = _pop.value;
+    if (!widget.checked || t < 0.45 || t >= 1) {
+      return 1;
+    }
+    return 1 + 0.18 * math.sin(((t - 0.45) / 0.55) * math.pi);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,38 +123,43 @@ class _HabitCheckState extends State<HabitCheck> {
         }
         _drag = 0;
       },
-      child: AnimatedScale(
-        scale: _pressed ? 0.86 : 1,
-        duration: const Duration(milliseconds: 140),
-        child: SizedBox(
-          width: 72,
-          height: 72,
-          child: CustomPaint(
-            painter: _RingPainter(
-              color: widget.color,
-              fraction: widget.checked ? 1 : fraction,
-              filled: widget.checked,
-            ),
-            child: Center(
-              child: Icon(
-                Icons.check,
-                color: widget.checked ? Colors.white : widget.color,
-                size: 32,
+      child: AnimatedBuilder(
+        animation: _pop,
+        builder: (context, _) {
+          final fill = _fill;
+          return Transform.scale(
+            scale: _scale,
+            child: SizedBox(
+              width: 72,
+              height: 72,
+              child: CustomPaint(
+                painter: _RingPainter(
+                  color: widget.color,
+                  fraction: widget.checked ? 1 : fraction,
+                  fill: fill,
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.check,
+                    color: fill > 0.5 ? Colors.white : widget.color,
+                    size: 32,
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 }
 
 class _RingPainter extends CustomPainter {
-  _RingPainter({required this.color, required this.fraction, required this.filled});
+  _RingPainter({required this.color, required this.fraction, required this.fill});
 
   final Color color;
   final double fraction;
-  final bool filled;
+  final double fill;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -119,10 +170,10 @@ class _RingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 6;
     canvas.drawCircle(center, radius, track);
-    if (filled) {
-      canvas.drawCircle(center, radius - 6, Paint()..color = color);
+    if (fill > 0) {
+      canvas.drawCircle(center, (radius - 6) * fill, Paint()..color = color);
     }
-    if (fraction <= 0) {
+    if (fraction <= 0 || fill >= 1) {
       return;
     }
     final arc = Paint()
@@ -142,7 +193,7 @@ class _RingPainter extends CustomPainter {
   @override
   bool shouldRepaint(_RingPainter oldDelegate) {
     return oldDelegate.fraction != fraction ||
-        oldDelegate.filled != filled ||
+        oldDelegate.fill != fill ||
         oldDelegate.color != color;
   }
 }

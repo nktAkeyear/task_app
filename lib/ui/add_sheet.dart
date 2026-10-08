@@ -52,6 +52,11 @@ class _AddSheetState extends State<AddSheet> {
       _start = DateTime(day.year, day.month, day.day);
       _allDay = true;
     }
+    _title.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -76,21 +81,34 @@ class _AddSheetState extends State<AddSheet> {
 
   DateTime get _endSeed => _end ?? _seedDay;
 
-  TimeOfDay get _startClock {
-    final start = _start;
-    if (start == null || (start.hour == 0 && start.minute == 0)) {
-      return const TimeOfDay(hour: 9, minute: 0);
-    }
-    return TimeOfDay(hour: start.hour, minute: start.minute);
+  DateTime _clockOn(DateTime day, {required int hour, int minute = 0}) {
+    return DateTime(day.year, day.month, day.day, hour, minute);
   }
 
-  TimeOfDay get _endClock {
-    final end = _end;
-    if (_endTouched && end != null && !(end.hour == 0 && end.minute == 0 && _allDay)) {
-      return TimeOfDay(hour: end.hour, minute: end.minute);
+  DateTime get _pickerStart {
+    final start = _start ?? _seedDay;
+    if (_allDay || (start.hour == 0 && start.minute == 0)) {
+      return _clockOn(start, hour: 9);
     }
-    final start = _startClock;
-    return TimeOfDay(hour: (start.hour + 1).clamp(0, 23), minute: start.minute);
+    return start;
+  }
+
+  DateTime get _pickerEnd {
+    final end = _endTouched ? _end : null;
+    if (end != null && !(_allDay && end.hour == 0 && end.minute == 0)) {
+      if (_allDay) {
+        return _clockOn(end, hour: 10);
+      }
+      return end;
+    }
+    final start = _pickerStart;
+    final hour = (start.hour + 1).clamp(0, 23);
+    return _clockOn(end ?? start, hour: hour, minute: start.minute);
+  }
+
+  String _rowClock(DateTime value) {
+    final hour12 = value.hour % 12 == 0 ? 12 : value.hour % 12;
+    return '$hour12:${value.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -127,6 +145,86 @@ class _AddSheetState extends State<AddSheet> {
             decoration: InputDecoration(
               hintText: copy.titleHint,
               border: InputBorder.none,
+              suffixIcon: _title.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: _title.clear,
+                      icon: const Icon(Icons.close),
+                    ),
+            ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(
+              backgroundColor: Color(_listColor(repo)),
+              radius: 8,
+            ),
+            title: Text(_listLabel(repo, copy)),
+            trailing: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            onTap: () => _pickList(repo, copy),
+          ),
+          Material(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(16),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  key: const Key('composer-all-day'),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  title: Text(copy.allDay),
+                  value: _allDay,
+                  onChanged: _setAllDay,
+                ),
+                Divider(height: 1, color: scheme.outlineVariant),
+                _WhenLine(
+                  icon: Icons.login,
+                  dateKey: const Key('composer-start-date'),
+                  timeKey: const Key('composer-start-time'),
+                  date: copy.drumDate(_start ?? _seedDay),
+                  time: _allDay ? null : _rowClock(_pickerStart),
+                  onTap: () => _openPicker(end: false),
+                ),
+                Divider(height: 1, color: scheme.outlineVariant),
+                _WhenLine(
+                  icon: Icons.logout,
+                  dateKey: const Key('composer-end-date'),
+                  timeKey: const Key('composer-end-time'),
+                  date: copy.drumDate(_endSeed),
+                  time: _allDay ? null : _rowClock(_pickerEnd),
+                  onTap: () => _openPicker(end: true),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            title: Text(copy.reminderLabel),
+            trailing: Text(
+              copy.reminder(_reminder),
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
+            onTap: _pickReminder,
+          ),
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            title: Text(copy.repeat),
+            trailing: Text(
+              copy.recurrence(_recurrence),
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
+            onTap: _pickRepeat,
+          ),
+          TextField(
+            key: const Key('create-notes'),
+            controller: _notes,
+            minLines: 1,
+            maxLines: 4,
+            decoration: InputDecoration(
+              labelText: copy.memo,
+              alignLabelWithHint: true,
             ),
           ),
           Align(
@@ -137,76 +235,6 @@ class _AddSheetState extends State<AddSheet> {
               icon: const Icon(Icons.notes_outlined),
               label: Text(copy.fromText),
             ),
-          ),
-          SwitchListTile(
-            key: const Key('composer-all-day'),
-            contentPadding: EdgeInsets.zero,
-            title: Text(copy.allDay),
-            value: _allDay,
-            onChanged: _setAllDay,
-          ),
-          _Span(
-            label: copy.start,
-            dateKey: const Key('composer-start-date'),
-            timeKey: const Key('composer-start-time'),
-            day: _start ?? _seedDay,
-            clock: _startClock,
-            showTime: !_allDay,
-            onDate: _onStartDate,
-            onTime: _onStartTime,
-          ),
-          const SizedBox(height: 8),
-          _Span(
-            label: copy.ends,
-            dateKey: const Key('composer-end-date'),
-            timeKey: const Key('composer-end-time'),
-            day: _endSeed,
-            clock: _endClock,
-            showTime: !_allDay,
-            onDate: _onEndDate,
-            onTime: _onEndTime,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const Key('create-notes'),
-            controller: _notes,
-            minLines: 3,
-            maxLines: 6,
-            decoration: InputDecoration(
-              labelText: copy.memo,
-              alignLabelWithHint: true,
-            ),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(copy.reminderLabel),
-            trailing: Text(
-              copy.reminder(_reminder),
-              style: TextStyle(color: scheme.onSurfaceVariant),
-            ),
-            onTap: _pickReminder,
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(copy.repeat),
-            trailing: Text(
-              copy.recurrence(_recurrence),
-              style: TextStyle(color: scheme.onSurfaceVariant),
-            ),
-            onTap: _pickRepeat,
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              backgroundColor: Color(_listColor(repo)),
-              radius: 8,
-            ),
-            title: Text(copy.lists),
-            trailing: Text(
-              _listLabel(repo, copy),
-              style: TextStyle(color: scheme.onSurfaceVariant),
-            ),
-            onTap: () => _pickList(repo, copy),
           ),
         ],
       ),
@@ -247,84 +275,36 @@ class _AddSheetState extends State<AddSheet> {
     });
   }
 
-  DateTime _stamp(DateTime day, DateTime? previous, {required int fallbackHour}) {
-    if (_allDay) {
-      return DateTime(day.year, day.month, day.day);
+  Future<void> _openPicker({required bool end}) async {
+    final picked = await showSpanPicker(
+      context,
+      start: _pickerStart,
+      end: _pickerEnd,
+      editingEnd: end,
+    );
+    if (picked == null || !mounted) {
+      return;
     }
-    final hour = previous == null || (previous.hour == 0 && previous.minute == 0)
-        ? fallbackHour.clamp(0, 23)
-        : previous.hour;
-    final minute = previous == null || (previous.hour == 0 && previous.minute == 0)
-        ? 0
-        : previous.minute;
-    return DateTime(day.year, day.month, day.day, hour, minute);
-  }
-
-  bool _sameStamp(DateTime a, DateTime b) {
-    return a.year == b.year &&
-        a.month == b.month &&
-        a.day == b.day &&
-        a.hour == b.hour &&
-        a.minute == b.minute;
-  }
-
-  void _onStartDate(DateTime day) {
-    final stamped = _stamp(day, _start, fallbackHour: 9);
-    if (_start == null) {
-      if (sameDay(stamped, _seedDay)) {
-        return;
+    setState(() {
+      final startTimeSame = picked.start.hour == _pickerStart.hour &&
+          picked.start.minute == _pickerStart.minute;
+      final endTimeSame = picked.end.hour == _pickerEnd.hour &&
+          picked.end.minute == _pickerEnd.minute;
+      final keepAllDay = _allDay && startTimeSame && endTimeSame;
+      if (keepAllDay) {
+        _start = startOfDay(picked.start);
+        if (picked.saveEnd) {
+          _endTouched = true;
+          _end = startOfDay(picked.end);
+        }
+      } else {
+        _allDay = false;
+        _start = picked.start;
+        if (picked.saveEnd) {
+          _endTouched = true;
+          _end = picked.end;
+        }
       }
-    } else if (_sameStamp(_start!, stamped)) {
-      return;
-    }
-    setState(() => _start = stamped);
-  }
-
-  void _onStartTime(TimeOfDay time) {
-    if (!_endTouched && time.hour == _startClock.hour && time.minute == _startClock.minute && _start != null) {
-      final start = _start!;
-      if (start.hour == time.hour && start.minute == time.minute) {
-        return;
-      }
-    }
-    if (_start != null && _start!.hour == time.hour && _start!.minute == time.minute && !_allDay) {
-      return;
-    }
-    final day = _start ?? _seedDay;
-    setState(() {
-      _allDay = false;
-      _start = DateTime(day.year, day.month, day.day, time.hour, time.minute);
-    });
-  }
-
-  void _onEndDate(DateTime day) {
-    final previous = _endTouched ? _end : null;
-    final stamped = _stamp(day, previous ?? _start, fallbackHour: _endClock.hour);
-    if (!_endTouched && sameDay(stamped, _endSeed)) {
-      return;
-    }
-    if (_end != null && _sameStamp(_end!, stamped)) {
-      return;
-    }
-    setState(() {
-      _endTouched = true;
-      _end = stamped;
-      _clamp();
-    });
-  }
-
-  void _onEndTime(TimeOfDay time) {
-    if (!_endTouched && time.hour == _endClock.hour && time.minute == _endClock.minute) {
-      return;
-    }
-    if (_end != null && _end!.hour == time.hour && _end!.minute == time.minute) {
-      return;
-    }
-    final day = _end ?? _endSeed;
-    setState(() {
-      _endTouched = true;
-      _allDay = false;
-      _end = DateTime(day.year, day.month, day.day, time.hour, time.minute);
       _clamp();
     });
   }
@@ -549,47 +529,44 @@ class _AddSheetState extends State<AddSheet> {
   }
 }
 
-class _Span extends StatelessWidget {
-  const _Span({
-    required this.label,
+class _WhenLine extends StatelessWidget {
+  const _WhenLine({
+    required this.icon,
     required this.dateKey,
     required this.timeKey,
-    required this.day,
-    required this.clock,
-    required this.showTime,
-    required this.onDate,
-    required this.onTime,
+    required this.date,
+    required this.time,
+    required this.onTap,
   });
 
-  final String label;
+  final IconData icon;
   final Key dateKey;
   final Key timeKey;
-  final DateTime day;
-  final TimeOfDay clock;
-  final bool showTime;
-  final ValueChanged<DateTime> onDate;
-  final ValueChanged<TimeOfDay> onTime;
+  final String date;
+  final String? time;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
-        SizedBox(
-          key: dateKey,
-          height: 168,
-          child: DateDrums(
-            value: day,
-            onChanged: onDate,
-          ),
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 12),
+            Expanded(child: Text(date, key: dateKey)),
+            if (time != null)
+              Text(
+                time!,
+                key: timeKey,
+                style: const TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
+              ),
+          ],
         ),
-        if (showTime)
-          KeyedSubtree(
-            key: timeKey,
-            child: TimeDrums(value: clock, onChanged: onTime),
-          ),
-      ],
+      ),
     );
   }
 }

@@ -50,6 +50,7 @@ class ListPane extends StatelessWidget {
                 const Spacer(),
                 if (onCreateTask != null)
                   IconButton(
+                    key: const Key('list-add-task'),
                     tooltip: copy.createTask,
                     onPressed: onCreateTask,
                     icon: const Icon(Icons.add),

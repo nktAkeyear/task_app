@@ -10,6 +10,7 @@ import '../data/task_repository.dart';
 import '../l10n/copy.dart';
 import '../update/app_update.dart';
 import 'home_layout_page.dart';
+import 'tab_layout_page.dart';
 
 class SettingsPane extends StatefulWidget {
   const SettingsPane({super.key});
@@ -128,13 +129,14 @@ class _SettingsPaneState extends State<SettingsPane> {
         Wrap(
           spacing: 8,
           children: [
-            for (final entry in [0, 1, 2, 3])
+            for (final entry in [0, 1, 2, 3, 4])
               ChoiceChip(
                 label: Text(switch (entry) {
                   0 => copy.lists,
                   1 => copy.today,
                   2 => copy.calendar,
-                  _ => copy.tools,
+                  3 => copy.tools,
+                  _ => copy.settings,
                 }),
                 selected: repo.homeTab == entry,
                 onSelected: (_) => repo.setHomeTab(entry),
@@ -150,6 +152,19 @@ class _SettingsPaneState extends State<SettingsPane> {
             Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (context) => const HomeLayoutPage(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(copy.tabLayout),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (context) => const TabLayoutPage(),
               ),
             );
           },

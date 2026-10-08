@@ -544,3 +544,383 @@ class _TimeDrumsState extends State<TimeDrums> {
     );
   }
 }
+
+const spanYearStart = 2016;
+const spanYearEnd = 2036;
+
+class SpanPick {
+  const SpanPick({required this.start, required this.end, required this.saveEnd});
+
+  final DateTime start;
+  final DateTime end;
+  final bool saveEnd;
+}
+
+Future<SpanPick?> showSpanPicker(
+  BuildContext context, {
+  required DateTime start,
+  required DateTime end,
+  required bool editingEnd,
+}) {
+  return showModalBottomSheet<SpanPick>(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) {
+      return _SpanPicker(start: start, end: end, editingEnd: editingEnd);
+    },
+  );
+}
+
+class _SpanPicker extends StatefulWidget {
+  const _SpanPicker({
+    required this.start,
+    required this.end,
+    required this.editingEnd,
+  });
+
+  final DateTime start;
+  final DateTime end;
+  final bool editingEnd;
+
+  @override
+  State<_SpanPicker> createState() => _SpanPickerState();
+}
+
+class _SpanPickerState extends State<_SpanPicker> {
+  late DateTime _start;
+  late DateTime _end;
+  late bool _editingEnd;
+  var _endDirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _start = widget.start;
+    _end = widget.end;
+    _editingEnd = widget.editingEnd;
+  }
+
+  DateTime get _active => _editingEnd ? _end : _start;
+
+  void _onDrum(DateTime value) {
+    final current = _active;
+    if (current.year == value.year &&
+        current.month == value.month &&
+        current.day == value.day &&
+        current.hour == value.hour &&
+        current.minute == value.minute) {
+      return;
+    }
+    setState(() {
+      if (_editingEnd) {
+        _end = value;
+        _endDirty = true;
+      } else {
+        _start = value;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final copy = Copy.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(child: _header(copy, scheme, end: false)),
+                const SizedBox(width: 8),
+                Expanded(child: _header(copy, scheme, end: true)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 180,
+              child: _SixDrums(value: _active, onChanged: _onDrum),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(copy.cancel),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      SpanPick(
+                        start: _start,
+                        end: _end,
+                        saveEnd: _editingEnd || _endDirty,
+                      ),
+                    ),
+                    child: Text(copy.doneLabel),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _header(Copy copy, ColorScheme scheme, {required bool end}) {
+    final active = _editingEnd == end;
+    final value = end ? _end : _start;
+    final color = active ? scheme.onPrimary : scheme.onSurface;
+    return Material(
+      color: active ? scheme.primary : scheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => setState(() => _editingEnd = end),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          child: Column(
+            children: [
+              Text(
+                copy.drumDate(value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: color, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                copy.halfClock(value),
+                style: TextStyle(color: color),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SixDrums extends StatefulWidget {
+  const _SixDrums({required this.value, required this.onChanged});
+
+  final DateTime value;
+  final ValueChanged<DateTime> onChanged;
+
+  @override
+  State<_SixDrums> createState() => _SixDrumsState();
+}
+
+class _SixDrumsState extends State<_SixDrums> {
+  late final FixedExtentScrollController _years;
+  late final FixedExtentScrollController _months;
+  late final FixedExtentScrollController _days;
+  late final FixedExtentScrollController _halves;
+  late final FixedExtentScrollController _hours;
+  late final FixedExtentScrollController _minutes;
+  var _fromWheel = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final value = widget.value;
+    _years = FixedExtentScrollController(initialItem: _yearIndex(value));
+    _months = FixedExtentScrollController(initialItem: value.month - 1);
+    _days = FixedExtentScrollController(initialItem: value.day - 1);
+    _halves = FixedExtentScrollController(initialItem: value.hour >= 12 ? 1 : 0);
+    _hours = FixedExtentScrollController(initialItem: _hourIndex(value.hour));
+    _minutes = FixedExtentScrollController(initialItem: value.minute);
+  }
+
+  @override
+  void didUpdateWidget(_SixDrums oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final own = _fromWheel;
+    _fromWheel = false;
+    if (own || _same(oldWidget.value, widget.value)) {
+      return;
+    }
+    _jump(_years, _yearIndex(widget.value));
+    _jump(_months, widget.value.month - 1);
+    _jump(_days, widget.value.day - 1);
+    _jump(_halves, widget.value.hour >= 12 ? 1 : 0);
+    _jump(_hours, _hourIndex(widget.value.hour));
+    _jump(_minutes, widget.value.minute);
+  }
+
+  @override
+  void dispose() {
+    _years.dispose();
+    _months.dispose();
+    _days.dispose();
+    _halves.dispose();
+    _hours.dispose();
+    _minutes.dispose();
+    super.dispose();
+  }
+
+  int _yearIndex(DateTime value) => (value.year - spanYearStart).clamp(0, spanYearEnd - spanYearStart);
+
+  int _hourIndex(int hour24) {
+    final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+    return hour12 - 1;
+  }
+
+  int _to24(int hour12, {required bool afternoon}) {
+    if (hour12 == 12) {
+      return afternoon ? 12 : 0;
+    }
+    return afternoon ? hour12 + 12 : hour12;
+  }
+
+  bool _same(DateTime a, DateTime b) {
+    return a.year == b.year &&
+        a.month == b.month &&
+        a.day == b.day &&
+        a.hour == b.hour &&
+        a.minute == b.minute;
+  }
+
+  void _jump(FixedExtentScrollController controller, int index) {
+    if (!controller.hasClients || controller.selectedItem == index) {
+      return;
+    }
+    controller.jumpToItem(index);
+  }
+
+  void _emit(DateTime next) {
+    if (_same(widget.value, next)) {
+      return;
+    }
+    _fromWheel = true;
+    widget.onChanged(next);
+  }
+
+  DateTime _with({
+    int? year,
+    int? month,
+    int? day,
+    int? hour,
+    int? minute,
+  }) {
+    final value = widget.value;
+    final nextYear = year ?? value.year;
+    final nextMonth = month ?? value.month;
+    final last = DateTime(nextYear, nextMonth + 1, 0).day;
+    final nextDay = (day ?? value.day).clamp(1, last);
+    return DateTime(
+      nextYear,
+      nextMonth,
+      nextDay,
+      hour ?? value.hour,
+      minute ?? value.minute,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final copy = Copy.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final style = TextStyle(fontSize: 16, color: scheme.onSurface);
+    final value = widget.value;
+    final afternoon = value.hour >= 12;
+    return CupertinoTheme(
+      data: CupertinoThemeData(
+        brightness: Theme.of(context).brightness,
+        textTheme: CupertinoTextThemeData(pickerTextStyle: style),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _wheel(
+              controller: _years,
+              onChanged: (index) => _emit(_with(year: spanYearStart + index)),
+              children: [
+                for (var year = spanYearStart; year <= spanYearEnd; year++)
+                  Center(child: Text('$year', style: style)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _wheel(
+              controller: _months,
+              onChanged: (index) {
+                final next = _with(month: index + 1);
+                _emit(next);
+                _jump(_days, next.day - 1);
+              },
+              children: [
+                for (var month = 1; month <= 12; month++)
+                  Center(child: Text(copy.monthShort(month), style: style)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _wheel(
+              controller: _days,
+              onChanged: (index) => _emit(_with(day: index + 1)),
+              children: [
+                for (var day = 1; day <= 31; day++)
+                  Center(child: Text('$day', style: style)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _wheel(
+              controller: _halves,
+              onChanged: (index) {
+                final hour12 = value.hour % 12 == 0 ? 12 : value.hour % 12;
+                _emit(_with(hour: _to24(hour12, afternoon: index == 1)));
+              },
+              children: [
+                Center(child: Text(copy.amLabel, style: style)),
+                Center(child: Text(copy.pmLabel, style: style)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _wheel(
+              controller: _hours,
+              onChanged: (index) => _emit(
+                _with(hour: _to24(index + 1, afternoon: afternoon)),
+              ),
+              children: [
+                for (var hour = 1; hour <= 12; hour++)
+                  Center(child: Text('$hour', style: style)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _wheel(
+              controller: _minutes,
+              onChanged: (index) => _emit(_with(minute: index)),
+              children: [
+                for (var minute = 0; minute < 60; minute++)
+                  Center(child: Text(minute.toString().padLeft(2, '0'), style: style)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _wheel({
+    required FixedExtentScrollController controller,
+    required ValueChanged<int> onChanged,
+    required List<Widget> children,
+  }) {
+    return CupertinoPicker(
+      scrollController: controller,
+      itemExtent: 32,
+      onSelectedItemChanged: onChanged,
+      children: children,
+    );
+  }
+}
