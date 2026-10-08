@@ -19,4 +19,13 @@ void main() {
     expect(parseLatestRelease(body, '1.3.0'), isNull);
     expect(parseLatestRelease(body, '2.0.0'), isNull);
   });
+
+  test('update files older than the install are removed and the same version stays', () {
+    expect(shouldDeleteUpdateFile('tas-1.2.0.apk', '1.3.0'), isTrue);
+    expect(shouldDeleteUpdateFile('tas-1.4.0.apk', '1.3.0'), isFalse);
+    expect(shouldDeleteUpdateFile('tas-1.4.0.apk.part', '1.3.0'), isFalse);
+    expect(shouldDeleteUpdateFile('tas-1.3.0.apk', '1.3.0'), isFalse);
+    expect(shouldDeleteUpdateFile('tas-update.apk', '1.3.0'), isTrue);
+    expect(exportApkName('1.4.0'), 'Tas-1.4.0.apk');
+  });
 }

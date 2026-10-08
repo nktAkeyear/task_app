@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -13,6 +15,8 @@ class HabitView {
     required this.checkedToday,
     required this.streak,
     required this.week,
+    this.goal = 1,
+    this.progress = 0,
   });
 
   final String id;
@@ -23,6 +27,8 @@ class HabitView {
   final bool checkedToday;
   final int streak;
   final List<bool> week;
+  final int goal;
+  final int progress;
 }
 
 class LocalTools {
@@ -38,6 +44,8 @@ class LocalTools {
   int longMin = 15;
 
   Map<String, int> placements = {};
+  Map<String, int> habitGoals = {};
+  Map<String, int> habitProgress = {};
   List<HabitView> habits = const [];
   List<HabitView> archivedHabits = const [];
   final Map<String, String> diary = {};
@@ -105,6 +113,7 @@ class LocalTools {
         await _catchUp();
       }
     }
+    await _loadHabitMeta();
     await _loadHabits();
     final entries = await db.select(db.diaryEntries).get();
     diary
@@ -149,22 +158,25 @@ class LocalTools {
     onChanged();
   }
 
-  Future<void> addHabit(String name, {int color = 0xFF1F4B4A}) async {
+  Future<void> addHabit(String name, {int color = 0xFF1F4B4A, int goal = 1}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
       return;
     }
+    final id = _uuid.v4();
     await db
         .into(db.habits)
         .insert(
           HabitsCompanion.insert(
-            id: _uuid.v4(),
+            id: id,
             name: trimmed,
             createdAt: now().millisecondsSinceEpoch,
             sortOrder: Value(habits.length),
             color: Value(color),
           ),
         );
+    habitGoals[id] = goal < 1 ? 1 : goal;
+    await _saveHabitMeta();
     await _loadHabits();
     onChanged();
   }
@@ -206,21 +218,54 @@ class LocalTools {
   }
 
   Future<void> toggleHabitToday(String habitId) async {
+    await logHabit(habitId, toggle: true);
+  }
+
+  /// One slide adds a step. A one-step habit toggles when [toggle] is set.
+  Future<void> logHabit(String habitId, {bool toggle = false}) async {
     final day = dayKey(now());
-    final existing =
-        await (db.select(db.habitChecks)..where(
-              (row) => row.habitId.equals(habitId) & row.day.equals(day),
-            ))
-            .getSingleOrNull();
-    if (existing == null) {
-      await db
-          .into(db.habitChecks)
-          .insert(HabitChecksCompanion.insert(habitId: habitId, day: day));
-    } else {
-      await (db.delete(db.habitChecks)
-            ..where((row) => row.habitId.equals(habitId) & row.day.equals(day)))
-          .go();
+    final key = '$habitId|$day';
+    final goal = habitGoals[habitId] ?? 1;
+    var amount = habitProgress[key] ?? 0;
+    if (toggle && goal <= 1) {
+      amount = amount >= goal ? 0 : goal;
+    } else if (amount < goal) {
+      amount += 1;
+    } else if (goal <= 1) {
+      amount = 0;
     }
+    if (amount <= 0) {
+      habitProgress.remove(key);
+      await _deleteCheck(habitId, day);
+    } else {
+      habitProgress[key] = amount;
+      if (amount >= goal) {
+        await _ensureCheck(habitId, day);
+      } else {
+        await _deleteCheck(habitId, day);
+      }
+    }
+    await _saveHabitMeta();
+    await _loadHabits();
+    onChanged();
+  }
+
+  Future<void> setHabitAmount(String habitId, int amount) async {
+    final day = dayKey(now());
+    final key = '$habitId|$day';
+    final goal = habitGoals[habitId] ?? 1;
+    if (amount <= 0) {
+      habitProgress.remove(key);
+      await _deleteCheck(habitId, day);
+    } else {
+      habitProgress[key] = amount;
+      if (amount >= goal) {
+        await _ensureCheck(habitId, day);
+      } else {
+        await _deleteCheck(habitId, day);
+      }
+    }
+    await _saveHabitMeta();
     await _loadHabits();
     onChanged();
   }
@@ -368,20 +413,29 @@ class LocalTools {
       byHabit.putIfAbsent(check.habitId, () => {}).add(check.day);
     }
     final today = DateTime(now().year, now().month, now().day);
+    final todayKey = dayKey(today);
     HabitView view(HabitRow row) {
       final days = byHabit[row.id] ?? const <String>{};
+      final goal = habitGoals[row.id] ?? 1;
+      final progressKey = '${row.id}|$todayKey';
+      var progress = habitProgress[progressKey] ?? 0;
+      if (days.contains(todayKey) && progress < goal) {
+        progress = goal;
+      }
       return HabitView(
         id: row.id,
         name: row.name,
         color: row.color,
         archived: row.archived,
         reminderMinute: row.reminderMinute,
-        checkedToday: days.contains(dayKey(today)),
+        checkedToday: progress >= goal,
         streak: _streak(days),
         week: [
           for (var offset = 6; offset >= 0; offset--)
             days.contains(dayKey(today.subtract(Duration(days: offset)))),
         ],
+        goal: goal,
+        progress: progress,
       );
     }
 
@@ -389,6 +443,62 @@ class LocalTools {
     archivedHabits = [
       for (final row in rows.where((row) => row.archived)) view(row),
     ];
+  }
+
+  Future<void> _ensureCheck(String habitId, String day) async {
+    final existing =
+        await (db.select(db.habitChecks)..where(
+              (row) => row.habitId.equals(habitId) & row.day.equals(day),
+            ))
+            .getSingleOrNull();
+    if (existing != null) {
+      return;
+    }
+    await db
+        .into(db.habitChecks)
+        .insert(HabitChecksCompanion.insert(habitId: habitId, day: day));
+  }
+
+  Future<void> _deleteCheck(String habitId, String day) async {
+    await (db.delete(db.habitChecks)
+          ..where((row) => row.habitId.equals(habitId) & row.day.equals(day)))
+        .go();
+  }
+
+  Future<void> _loadHabitMeta() async {
+    habitGoals = _intMap(await _setting('habitGoals'));
+    habitProgress = _intMap(await _setting('habitProgress'));
+  }
+
+  Future<void> _saveHabitMeta() async {
+    await _putSetting('habitGoals', jsonEncode(habitGoals));
+    await _putSetting('habitProgress', jsonEncode(habitProgress));
+  }
+
+  Map<String, int> _intMap(String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return {};
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        return {};
+      }
+      return {
+        for (final entry in decoded.entries)
+          if (entry.value is num) entry.key.toString(): (entry.value as num).toInt(),
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _putSetting(String key, String value) async {
+    await db
+        .into(db.settingEntries)
+        .insertOnConflictUpdate(
+          SettingEntriesCompanion.insert(settingKey: key, value: value),
+        );
   }
 
   int _streak(Set<String> days) {

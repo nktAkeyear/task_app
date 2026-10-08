@@ -5,9 +5,18 @@ class HomeBlock {
   final bool visible;
 }
 
-const homeSectionIds = ['week', 'schedule', 'overdue', 'habits'];
+const homeSectionIds = [
+  'week',
+  'schedule',
+  'overdue',
+  'habits',
+  'pomodoro',
+  'diary',
+  'matrix',
+];
 
-const defaultHomeLayout = 'week,schedule,overdue,habits';
+const defaultHomeLayout =
+    'week,schedule,overdue,habits,pomodoro,diary,matrix';
 
 List<HomeBlock> parseHomeLayout(String? raw) {
   final known = homeSectionIds.toSet();

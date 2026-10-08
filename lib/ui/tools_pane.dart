@@ -309,15 +309,23 @@ class MatrixPage extends StatelessWidget {
     );
   }
 
-  Future<void> _place(BuildContext context, List<TaskModel> tasks) async {
-    final copy = Copy.of(context);
-    if (tasks.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(copy.noOpenTasks)));
-      return;
-    }
-    final repo = RepoScope.of(context);
-    var taskId = tasks.first.id;
+  Future<void> _place(BuildContext context, List<TaskModel> tasks) {
+    return showPlaceTaskDialog(context);
+  }
+}
+
+Future<void> showPlaceTaskDialog(BuildContext context) async {
+  final repo = RepoScope.of(context);
+  final tasks = repo.tasks
+      .where((task) => !task.deleted && !task.isCompleted)
+      .toList();
+  final copy = Copy.of(context);
+  if (tasks.isEmpty) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(copy.noOpenTasks)));
+    return;
+  }
+  var taskId = tasks.first.id;
     var quadrant = repo.tools.placements[taskId] ?? 0;
     final saved = await showDialog<bool>(
       context: context,
@@ -373,7 +381,6 @@ class MatrixPage extends StatelessWidget {
     if (saved == true) {
       await repo.tools.placeTask(taskId, quadrant);
     }
-  }
 }
 
 class _Quadrant extends StatelessWidget {
@@ -486,6 +493,39 @@ class _TaskChip extends StatelessWidget {
   }
 }
 
+Future<void> logHabitFromUi(
+  BuildContext context,
+  HabitView habit, {
+  required bool tap,
+  Future<void> Function()? onChanged,
+}) async {
+  if (tap && habit.goal > 1) {
+    return;
+  }
+  final tools = RepoScope.of(context).tools;
+  final copy = Copy.of(context);
+  final before = habit.progress;
+  await tools.logHabit(habit.id, toggle: tap);
+  await onChanged?.call();
+  if (!context.mounted) {
+    return;
+  }
+  final partial = !tap && habit.goal > 1 && before + 1 < habit.goal;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      duration: const Duration(seconds: 4),
+      content: Text(partial ? copy.oneStepCloser : copy.undo),
+      action: SnackBarAction(
+        label: copy.undo,
+        onPressed: () async {
+          await tools.setHabitAmount(habit.id, before);
+          await onChanged?.call();
+        },
+      ),
+    ),
+  );
+}
+
 class HabitsPage extends StatefulWidget {
   const HabitsPage({super.key});
 
@@ -579,7 +619,6 @@ class _HabitCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final copy = Copy.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final tools = RepoScope.of(context).tools;
     final reminder = habit.reminderMinute == null
         ? copy.noReminder
         : '${(habit.reminderMinute! ~/ 60).toString().padLeft(2, '0')}:${(habit.reminderMinute! % 60).toString().padLeft(2, '0')}';
@@ -595,11 +634,11 @@ class _HabitCard extends StatelessWidget {
             HabitCheck(
               checked: habit.checkedToday,
               color: Color(habit.color),
+              progress: habit.progress,
+              goal: habit.goal,
               checkKey: Key('habit-check-${habit.id}'),
-              onTap: () async {
-                await tools.toggleHabitToday(habit.id);
-                await onChanged();
-              },
+              onTap: () => logHabitFromUi(context, habit, tap: true, onChanged: onChanged),
+              onSlide: () => logHabitFromUi(context, habit, tap: false, onChanged: onChanged),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -614,6 +653,11 @@ class _HabitCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
+                  if (habit.goal > 1)
+                    Text(
+                      copy.habitProgress(habit.progress, habit.goal),
+                      style: TextStyle(color: scheme.onSurfaceVariant),
+                    ),
                   Text(copy.streak(habit.streak)),
                   const SizedBox(height: 8),
                   Row(

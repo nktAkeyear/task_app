@@ -125,6 +125,10 @@ class Copy {
   }
 
   String reminder(String reminder) {
+    if (reminder.startsWith('m:')) {
+      final minutes = reminder.substring(2);
+      return pick('$minutes分前', '$minutes min before', '$minutes분 전');
+    }
     return switch (reminder) {
       'ontime' => pick('時刻どおり', 'On time', '정시'),
       '5m' => pick('5分前', '5 min before', '5분 전'),
@@ -133,6 +137,14 @@ class Copy {
       '1d' => pick('1日前', '1 day before', '1일 전'),
       _ => none,
     };
+  }
+
+  String monthName(int month) {
+    return pick(
+      '$month月',
+      _enMonthFull(month),
+      '$month월',
+    );
   }
 
   String due(DateTime due, {required bool hasTime, required DateTime now}) {
@@ -389,12 +401,64 @@ class Copy {
   String get language => pick('言語', 'Language', '언어');
   String get homeTab => pick('起動時のタブ', 'Home tab', '시작 탭');
   String get homeLayout => pick('ホームの並び', 'Home layout', '홈 구성');
+  String get homeLayoutLead => pick(
+    '表示中のブロックは、この順でホームに出ます。隠したブロックもこの一覧に残ります。',
+    'Shown blocks appear on Home in this order. A hidden block stays in this list.',
+    '보이는 블록은 이 순서로 홈에 나옵니다. 숨긴 블록도 이 목록에 남습니다.',
+  );
+  String get allBlocksHidden => pick(
+    'すべてのブロックが隠れています。',
+    'Every block is hidden.',
+    '모든 블록이 숨겨져 있습니다.',
+  );
+  String get resetHomeTitle =>
+      pick('ホームの並びを戻しますか？', 'Reset home layout?', '홈 구성을 되돌릴까요?');
+  String get resetHomeBody => pick(
+    '7つのブロックを、初期の順ですべて表示します。',
+    'Show all seven blocks in the default order.',
+    '블록 7개를 기본 순서로 모두 표시합니다.',
+  );
+  String get dragToReorder =>
+      pick('ドラッグして並べ替え', 'Drag to reorder', '끌어 순서 변경');
+  String get prevDay => pick('前の日', 'Previous day', '이전 날');
+  String get nextDay => pick('次の日', 'Next day', '다음 날');
+  String get oneStepCloser =>
+      pick('もう一歩です。', "You're one step closer!", '한 걸음 더 가까워졌어요.');
+  String get customMinutes => pick('何分前', 'Minutes before', '몇 분 전');
+  String habitProgress(int current, int goal) => '$current/$goal';
   String homeSection(String id) {
     return switch (id) {
       'week' => pick('週', 'Week', '주'),
       'schedule' => pick('その日の予定', 'That day’s schedule', '그 날의 일정'),
       'overdue' => pick('期限切れ', 'Overdue', '기한 지남'),
+      'pomodoro' => pomodoro,
+      'diary' => diary,
+      'matrix' => matrix,
       _ => pick('今日の習慣', 'Today’s habits', '오늘의 습관'),
+    };
+  }
+
+  String homeBlockDescription(String id) {
+    return switch (id) {
+      'week' => pick(
+        '今週の日付。日を押すと予定と日記が切り替わります。',
+        'This week’s days. Tap a day to change the schedule and the diary.',
+        '이번 주의 날짜입니다. 날짜를 누르면 일정과 일기가 바뀝니다.',
+      ),
+      'schedule' => pick(
+        '選んだ日のタスク。',
+        'Tasks on the selected day.',
+        '고른 날의 할 일.',
+      ),
+      'overdue' => pick(
+        '今日より前で、まだ終わっていないもの。',
+        'Still open from before today.',
+        '오늘보다 이전이고 아직 끝나지 않은 것.',
+      ),
+      'pomodoro' => pomodoroBlurb,
+      'diary' => diaryBlurb,
+      'matrix' => matrixBlurb,
+      _ => habitsBlurb,
     };
   }
   String get scheduleEmpty => pick(

@@ -64,6 +64,13 @@ DateTime? reminderInstant({
     return null;
   }
   final base = dueHasTime ? due : DateTime(due.year, due.month, due.day, 9);
+  if (preset.startsWith('m:')) {
+    final minutes = int.tryParse(preset.substring(2));
+    if (minutes == null) {
+      return null;
+    }
+    return base.subtract(Duration(minutes: minutes));
+  }
   return switch (preset) {
     reminderOnTime => base,
     reminder5m => base.subtract(const Duration(minutes: 5)),

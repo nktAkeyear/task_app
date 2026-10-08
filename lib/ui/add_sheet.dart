@@ -4,8 +4,8 @@ import '../app.dart';
 import '../data/task_repository.dart';
 import '../domain/filters.dart';
 import '../domain/models.dart';
+import '../domain/recurrence.dart';
 import '../l10n/copy.dart';
-import 'task_composer.dart';
 import 'text_import_page.dart';
 import 'when_picker.dart';
 
@@ -14,22 +14,10 @@ Future<void> showAddSheet(
   String? listId,
   DateTime? day,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    useSafeArea: true,
-    builder: (context) {
-      final inset = MediaQuery.viewInsetsOf(context).bottom;
-      final height = MediaQuery.sizeOf(context).height * 0.88;
-      return Padding(
-        padding: EdgeInsets.only(bottom: inset),
-        child: SizedBox(
-          height: height,
-          child: AddSheet(listId: listId, day: day),
-        ),
-      );
-    },
+  return Navigator.of(context).push<void>(
+    MaterialPageRoute<void>(
+      builder: (context) => AddSheet(listId: listId, day: day),
+    ),
   );
 }
 
@@ -48,19 +36,19 @@ class _AddSheetState extends State<AddSheet> {
   final _notes = TextEditingController();
   late String _listId;
   var _allDay = true;
-  var _priority = 0;
+  var _recurrence = recurrenceNone;
+  var _reminder = reminderNone;
   DateTime? _start;
   DateTime? _end;
-  final _tagIds = <String>{};
-  final _newTagNames = <String>[];
+  var _endTouched = false;
   var _saving = false;
 
   @override
   void initState() {
     super.initState();
     _listId = widget.listId ?? inboxId;
-    if (widget.day != null) {
-      final day = widget.day!;
+    final day = widget.day;
+    if (day != null) {
       _start = DateTime(day.year, day.month, day.day);
       _allDay = true;
     }
@@ -73,115 +61,155 @@ class _AddSheetState extends State<AddSheet> {
     super.dispose();
   }
 
+  DateTime get _seedDay {
+    final start = _start;
+    if (start != null) {
+      return startOfDay(start);
+    }
+    final day = widget.day;
+    if (day != null) {
+      return DateTime(day.year, day.month, day.day);
+    }
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  DateTime get _endSeed => _end ?? _seedDay;
+
+  TimeOfDay get _startClock {
+    final start = _start;
+    if (start == null || (start.hour == 0 && start.minute == 0)) {
+      return const TimeOfDay(hour: 9, minute: 0);
+    }
+    return TimeOfDay(hour: start.hour, minute: start.minute);
+  }
+
+  TimeOfDay get _endClock {
+    final end = _end;
+    if (_endTouched && end != null && !(end.hour == 0 && end.minute == 0 && _allDay)) {
+      return TimeOfDay(hour: end.hour, minute: end.minute);
+    }
+    final start = _startClock;
+    return TimeOfDay(hour: (start.hour + 1).clamp(0, 23), minute: start.minute);
+  }
+
   @override
   Widget build(BuildContext context) {
     final repo = RepoScope.of(context);
     final copy = Copy.of(context);
     final scheme = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-          child: Text(
-            copy.createTask,
-            style: Theme.of(context).textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w800),
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: copy.close,
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.close),
         ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-            children: [
-              TextField(
-                key: const Key('create-title'),
-                controller: _title,
-                autofocus: true,
-                textCapitalization: TextCapitalization.sentences,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-                decoration: InputDecoration(
-                  hintText: copy.titleHint,
-                  border: InputBorder.none,
-                ),
-              ),
-              ScheduleCard(
-                copy: copy,
-                scheme: scheme,
-                allDay: _allDay,
-                start: _start,
-                end: _end,
-                onAllDay: _setAllDay,
-                onStartDate: () => _pickDate(isEnd: false),
-                onEndDate: () => _pickDate(isEnd: true),
-                onStartTime: () => _pickTime(isEnd: false),
-                onEndTime: () => _pickTime(isEnd: true),
-                onClearEnd: () => setState(() => _end = null),
-              ),
-              const SizedBox(height: 8),
-              _Row(
-                icon: Icons.circle,
-                iconColor: Color(_listColor(repo)),
-                label: copy.lists,
-                value: _listLabel(repo, copy),
-                onTap: () => _pickList(repo, copy),
-              ),
-              _Row(
-                icon: Icons.flag_outlined,
-                label: copy.priorityLabel,
-                value: copy.priority(_priority),
-                onTap: () => _pickPriority(copy),
-              ),
-              _Row(
-                icon: Icons.label_outline,
-                label: copy.tags,
-                value: _tagLabel(repo, copy),
-                onTap: () => _pickTags(repo, copy),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                key: const Key('create-notes'),
-                controller: _notes,
-                minLines: 2,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  labelText: copy.memo,
-                  alignLabelWithHint: true,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  key: const Key('text-import'),
-                  onPressed: _openText,
-                  icon: const Icon(Icons.notes_outlined),
-                  label: Text(copy.fromText),
-                ),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  key: const Key('open-details'),
-                  onPressed: _openDetails,
-                  icon: const Icon(Icons.open_in_full),
-                  label: Text(copy.moreDetails),
-                ),
-              ),
-            ],
+        title: Text(copy.createTask),
+        actions: [
+          TextButton(
+            key: const Key('create-save'),
+            onPressed: _saving ? null : _save,
+            child: Text(copy.save),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-          child: SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton(
-              key: const Key('create-save'),
-              onPressed: _saving ? null : _save,
-              child: Text(copy.save),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+        children: [
+          TextField(
+            key: const Key('create-title'),
+            controller: _title,
+            autofocus: true,
+            textCapitalization: TextCapitalization.sentences,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            decoration: InputDecoration(
+              hintText: copy.titleHint,
+              border: InputBorder.none,
             ),
           ),
-        ),
-      ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('text-import'),
+              onPressed: _openText,
+              icon: const Icon(Icons.notes_outlined),
+              label: Text(copy.fromText),
+            ),
+          ),
+          SwitchListTile(
+            key: const Key('composer-all-day'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(copy.allDay),
+            value: _allDay,
+            onChanged: _setAllDay,
+          ),
+          _Span(
+            label: copy.start,
+            dateKey: const Key('composer-start-date'),
+            timeKey: const Key('composer-start-time'),
+            day: _start ?? _seedDay,
+            clock: _startClock,
+            showTime: !_allDay,
+            onDate: _onStartDate,
+            onTime: _onStartTime,
+          ),
+          const SizedBox(height: 8),
+          _Span(
+            label: copy.ends,
+            dateKey: const Key('composer-end-date'),
+            timeKey: const Key('composer-end-time'),
+            day: _endSeed,
+            clock: _endClock,
+            showTime: !_allDay,
+            onDate: _onEndDate,
+            onTime: _onEndTime,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('create-notes'),
+            controller: _notes,
+            minLines: 3,
+            maxLines: 6,
+            decoration: InputDecoration(
+              labelText: copy.memo,
+              alignLabelWithHint: true,
+            ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(copy.reminderLabel),
+            trailing: Text(
+              copy.reminder(_reminder),
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
+            onTap: _pickReminder,
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(copy.repeat),
+            trailing: Text(
+              copy.recurrence(_recurrence),
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
+            onTap: _pickRepeat,
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(
+              backgroundColor: Color(_listColor(repo)),
+              radius: 8,
+            ),
+            title: Text(copy.lists),
+            trailing: Text(
+              _listLabel(repo, copy),
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
+            onTap: () => _pickList(repo, copy),
+          ),
+        ],
+      ),
     );
   }
 
@@ -191,7 +219,7 @@ class _AddSheetState extends State<AddSheet> {
         return list.color;
       }
     }
-    return listColors.first;
+    return 0xFF6750A4;
   }
 
   String _listLabel(TaskRepository repo, Copy copy) {
@@ -203,81 +231,19 @@ class _AddSheetState extends State<AddSheet> {
     return copy.inbox;
   }
 
-  String _tagLabel(TaskRepository repo, Copy copy) {
-    final names = <String>[
-      for (final id in _tagIds)
-        for (final tag in repo.tags)
-          if (tag.id == id && !tag.deleted) tag.name,
-      ..._newTagNames,
-    ];
-    if (names.isEmpty) {
-      return copy.notSet;
-    }
-    return names.join(', ');
-  }
-
   void _setAllDay(bool value) {
     setState(() {
       _allDay = value;
-      if (value) {
-        if (_start != null) {
-          _start = startOfDay(_start!);
-        }
-        if (_end != null) {
-          _end = startOfDay(_end!);
-        }
-        return;
+      final start = _start;
+      if (start != null && value) {
+        _start = startOfDay(start);
+      } else if (start != null && start.hour == 0 && start.minute == 0) {
+        _start = DateTime(start.year, start.month, start.day, 9);
       }
-      if (_start != null && _start!.hour == 0 && _start!.minute == 0) {
-        _start = DateTime(_start!.year, _start!.month, _start!.day, 9);
+      final end = _end;
+      if (end != null && value) {
+        _end = startOfDay(end);
       }
-      if (_end != null && _end!.hour == 0 && _end!.minute == 0) {
-        final hour = ((_start?.hour ?? 9) + 1).clamp(0, 23);
-        _end = DateTime(_end!.year, _end!.month, _end!.day, hour);
-      }
-    });
-  }
-
-  Future<void> _pickDate({required bool isEnd}) async {
-    final now = DateTime.now();
-    final current = isEnd ? (_end ?? _start) : _start;
-    final picked = await showMonthCalendar(context, initial: current ?? now);
-    if (picked == null || !mounted) {
-      return;
-    }
-    setState(() {
-      if (isEnd) {
-        _end = _stamp(picked, _end ?? _start, fallbackHour: (_start?.hour ?? 8) + 1);
-        _start ??= _stamp(picked, null, fallbackHour: 9);
-      } else {
-        _start = _stamp(picked, _start, fallbackHour: 9);
-      }
-      _clamp();
-    });
-  }
-
-  Future<void> _pickTime({required bool isEnd}) async {
-    final now = DateTime.now();
-    final current = isEnd ? (_end ?? _start) : _start;
-    final seed = current ?? DateTime(now.year, now.month, now.day, isEnd ? 10 : 9);
-    final picked = await showWheelTime(
-      context,
-      initial: TimeOfDay(hour: seed.hour, minute: seed.minute),
-    );
-    if (picked == null || !mounted) {
-      return;
-    }
-    setState(() {
-      final day = current ?? now;
-      final stamped = DateTime(day.year, day.month, day.day, picked.hour, picked.minute);
-      if (isEnd) {
-        _end = stamped;
-        _start ??= DateTime(day.year, day.month, day.day, 9);
-      } else {
-        _start = stamped;
-      }
-      _allDay = false;
-      _clamp();
     });
   }
 
@@ -285,24 +251,95 @@ class _AddSheetState extends State<AddSheet> {
     if (_allDay) {
       return DateTime(day.year, day.month, day.day);
     }
-    return DateTime(
-      day.year,
-      day.month,
-      day.day,
-      previous?.hour ?? fallbackHour.clamp(0, 23),
-      previous?.minute ?? 0,
-    );
+    final hour = previous == null || (previous.hour == 0 && previous.minute == 0)
+        ? fallbackHour.clamp(0, 23)
+        : previous.hour;
+    final minute = previous == null || (previous.hour == 0 && previous.minute == 0)
+        ? 0
+        : previous.minute;
+    return DateTime(day.year, day.month, day.day, hour, minute);
+  }
+
+  bool _sameStamp(DateTime a, DateTime b) {
+    return a.year == b.year &&
+        a.month == b.month &&
+        a.day == b.day &&
+        a.hour == b.hour &&
+        a.minute == b.minute;
+  }
+
+  void _onStartDate(DateTime day) {
+    final stamped = _stamp(day, _start, fallbackHour: 9);
+    if (_start == null) {
+      if (sameDay(stamped, _seedDay)) {
+        return;
+      }
+    } else if (_sameStamp(_start!, stamped)) {
+      return;
+    }
+    setState(() => _start = stamped);
+  }
+
+  void _onStartTime(TimeOfDay time) {
+    if (!_endTouched && time.hour == _startClock.hour && time.minute == _startClock.minute && _start != null) {
+      final start = _start!;
+      if (start.hour == time.hour && start.minute == time.minute) {
+        return;
+      }
+    }
+    if (_start != null && _start!.hour == time.hour && _start!.minute == time.minute && !_allDay) {
+      return;
+    }
+    final day = _start ?? _seedDay;
+    setState(() {
+      _allDay = false;
+      _start = DateTime(day.year, day.month, day.day, time.hour, time.minute);
+    });
+  }
+
+  void _onEndDate(DateTime day) {
+    final previous = _endTouched ? _end : null;
+    final stamped = _stamp(day, previous ?? _start, fallbackHour: _endClock.hour);
+    if (!_endTouched && sameDay(stamped, _endSeed)) {
+      return;
+    }
+    if (_end != null && _sameStamp(_end!, stamped)) {
+      return;
+    }
+    setState(() {
+      _endTouched = true;
+      _end = stamped;
+      _clamp();
+    });
+  }
+
+  void _onEndTime(TimeOfDay time) {
+    if (!_endTouched && time.hour == _endClock.hour && time.minute == _endClock.minute) {
+      return;
+    }
+    if (_end != null && _end!.hour == time.hour && _end!.minute == time.minute) {
+      return;
+    }
+    final day = _end ?? _endSeed;
+    setState(() {
+      _endTouched = true;
+      _allDay = false;
+      _end = DateTime(day.year, day.month, day.day, time.hour, time.minute);
+      _clamp();
+    });
   }
 
   void _clamp() {
-    if (_start != null && _end != null && _end!.isBefore(_start!)) {
-      _end = _start;
+    final start = _start;
+    final end = _end;
+    if (start != null && end != null && end.isBefore(start)) {
+      _end = start;
     }
   }
 
   ({DateTime? start, DateTime? end, bool allDay}) _span() {
     var start = _start;
-    var end = _end;
+    var end = _endTouched ? _end : null;
     final allDay = _allDay;
     if (start == null) {
       return (start: null, end: null, allDay: allDay);
@@ -315,6 +352,121 @@ class _AddSheetState extends State<AddSheet> {
       end = start;
     }
     return (start: start, end: end, allDay: allDay);
+  }
+
+  Future<void> _pickRepeat() async {
+    final copy = Copy.of(context);
+    final picked = await _pickString(
+      title: copy.repeat,
+      values: const [
+        recurrenceNone,
+        recurrenceDaily,
+        recurrenceWeekly,
+        recurrenceMonthly,
+        recurrenceWeekdays,
+      ],
+      label: copy.recurrence,
+      selected: _recurrence,
+    );
+    if (picked == null) {
+      return;
+    }
+    setState(() => _recurrence = picked);
+  }
+
+  Future<void> _pickReminder() async {
+    final copy = Copy.of(context);
+    const custom = '__custom__';
+    final picked = await _pickString(
+      title: copy.reminderLabel,
+      values: const [
+        reminderNone,
+        reminderOnTime,
+        reminder5m,
+        reminder15m,
+        reminder1h,
+        reminder1d,
+        custom,
+      ],
+      label: (value) => value == custom ? copy.customMinutes : copy.reminder(value),
+      selected: _reminder.startsWith('m:') ? custom : _reminder,
+    );
+    if (picked == null || !mounted) {
+      return;
+    }
+    if (picked == custom) {
+      final minutes = await _askMinutes();
+      if (minutes == null) {
+        return;
+      }
+      setState(() => _reminder = 'm:$minutes');
+      return;
+    }
+    setState(() => _reminder = picked);
+  }
+
+  Future<int?> _askMinutes() async {
+    final copy = Copy.of(context);
+    final field = TextEditingController();
+    final minutes = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(copy.customMinutes),
+        content: TextField(
+          controller: field,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(labelText: copy.customMinutes),
+          onSubmitted: (raw) => Navigator.pop(context, int.tryParse(raw.trim())),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(copy.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, int.tryParse(field.text.trim())),
+            child: Text(copy.doneLabel),
+          ),
+        ],
+      ),
+    );
+    field.dispose();
+    if (minutes == null || minutes < 0) {
+      return null;
+    }
+    return minutes;
+  }
+
+  Future<String?> _pickString({
+    required String title,
+    required List<String> values,
+    required String Function(String value) label,
+    required String selected,
+  }) {
+    return showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+              ),
+              for (final value in values)
+                ListTile(
+                  title: Text(label(value)),
+                  trailing: value == selected ? const Icon(Icons.check) : null,
+                  onTap: () => Navigator.pop(context, value),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _pickList(TaskRepository repo, Copy copy) async {
@@ -350,105 +502,6 @@ class _AddSheetState extends State<AddSheet> {
     }
   }
 
-  Future<void> _pickPriority(Copy copy) async {
-    final picked = await showModalBottomSheet<int>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final level in const [0, 1, 2, 3])
-                ListTile(
-                  title: Text(copy.priority(level)),
-                  trailing: level == _priority ? const Icon(Icons.check) : null,
-                  onTap: () => Navigator.pop(context, level),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() => _priority = picked);
-    }
-  }
-
-  Future<void> _pickTags(TaskRepository repo, Copy copy) async {
-    final name = TextEditingController();
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheet) {
-            final tags = repo.tags.where((tag) => !tag.deleted);
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-              child: SafeArea(
-                child: ListView(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  children: [
-                    Text(copy.tags, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final tag in tags)
-                          FilterChip(
-                            label: Text(tag.name),
-                            selected: _tagIds.contains(tag.id),
-                            onSelected: (_) {
-                              setState(() {
-                                if (!_tagIds.add(tag.id)) {
-                                  _tagIds.remove(tag.id);
-                                }
-                              });
-                              setSheet(() {});
-                            },
-                          ),
-                        for (final pending in _newTagNames)
-                          InputChip(
-                            label: Text(pending),
-                            onDeleted: () {
-                              setState(() => _newTagNames.remove(pending));
-                              setSheet(() {});
-                            },
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: name,
-                      decoration: InputDecoration(hintText: copy.tagName),
-                      onSubmitted: (value) {
-                        final raw = value.trim();
-                        if (raw.isEmpty) {
-                          return;
-                        }
-                        setState(() => _newTagNames.add(raw));
-                        name.clear();
-                        setSheet(() {});
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-    name.dispose();
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
   Future<void> _openText() async {
     final navigator = Navigator.of(context);
     final listId = _listId;
@@ -460,50 +513,17 @@ class _AddSheetState extends State<AddSheet> {
     );
   }
 
-  void _openDetails() {
-    final navigator = Navigator.of(context);
-    final span = _span();
-    final title = _title.text;
-    final notes = _notes.text;
-    final listId = _listId;
-    final priority = _priority;
-    final tags = _tagIds.toList();
-    navigator.pop();
-    navigator.push(
-      MaterialPageRoute<void>(
-        builder: (context) => TaskComposerPage(
-          listId: listId,
-          initialTitle: title,
-          initialNotes: notes,
-          initialStart: span.start,
-          initialEnd: span.end,
-          initialHasTime: span.start != null && !span.allDay,
-          initialPriority: priority,
-          initialTagIds: tags,
-        ),
-      ),
-    );
-  }
-
   Future<void> _save() async {
     final repo = RepoScope.of(context);
     final copy = Copy.of(context);
     final title = _title.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(copy.titleRequired)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(copy.titleRequired)));
       return;
     }
     setState(() => _saving = true);
     try {
       final span = _span();
-      final ids = <String>[..._tagIds];
-      for (final name in _newTagNames) {
-        ids.add(await repo.createTag(name));
-      }
-      if (!mounted) {
-        return;
-      }
       await repo.createTask(
         title: title,
         listId: _listId,
@@ -511,16 +531,15 @@ class _AddSheetState extends State<AddSheet> {
         due: span.start,
         hasTime: span.start != null && !span.allDay,
         endsAt: span.end,
-        priority: _priority,
-        tagIds: ids,
+        recurrence: _recurrence,
+        reminder: _reminder,
       );
       if (mounted) {
         Navigator.of(context).pop();
       }
     } on FormatException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -530,44 +549,47 @@ class _AddSheetState extends State<AddSheet> {
   }
 }
 
-class _Row extends StatelessWidget {
-  const _Row({
-    required this.icon,
+class _Span extends StatelessWidget {
+  const _Span({
     required this.label,
-    required this.value,
-    required this.onTap,
-    this.iconColor,
+    required this.dateKey,
+    required this.timeKey,
+    required this.day,
+    required this.clock,
+    required this.showTime,
+    required this.onDate,
+    required this.onTime,
   });
 
-  final IconData icon;
-  final Color? iconColor;
   final String label;
-  final String value;
-  final VoidCallback onTap;
+  final Key dateKey;
+  final Key timeKey;
+  final DateTime day;
+  final TimeOfDay clock;
+  final bool showTime;
+  final ValueChanged<DateTime> onDate;
+  final ValueChanged<TimeOfDay> onTime;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          children: [
-            Icon(icon, color: iconColor ?? scheme.onSurfaceVariant, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(label)),
-            Flexible(
-              child: Text(
-                value,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: TextStyle(color: scheme.onSurfaceVariant),
-              ),
-            ),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+        SizedBox(
+          key: dateKey,
+          height: 168,
+          child: DateDrums(
+            value: day,
+            onChanged: onDate,
+          ),
         ),
-      ),
+        if (showTime)
+          KeyedSubtree(
+            key: timeKey,
+            child: TimeDrums(value: clock, onChanged: onTime),
+          ),
+      ],
     );
   }
 }

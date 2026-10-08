@@ -28,11 +28,20 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("tasRelease") {
+            storeFile = file(
+                "/cursor/stores/bc-87f8ca41-a146-4d7f-96a8-42cb7d908cce/internal/tas-debug.keystore",
+            )
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
-            // Debug signing so `flutter run --release` works out of the box.
-            // Replace this with a release keystore before shipping to a store.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("tasRelease")
         }
     }
 }

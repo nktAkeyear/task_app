@@ -297,7 +297,7 @@ class _TaskComposerPageState extends State<TaskComposerPage> {
   Future<void> _pickDate({required bool isEnd}) async {
     final now = DateTime.now();
     final current = isEnd ? (_end ?? _start) : _start;
-    final picked = await showMonthCalendar(
+    final picked = await showDateDrum(
       context,
       initial: current ?? now,
     );

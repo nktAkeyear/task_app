@@ -149,7 +149,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('タスクを作成'), findsOneWidget);
     expect(find.byKey(const Key('create-title')), findsOneWidget);
-    expect(find.text('優先度'), findsOneWidget);
+    expect(find.text('メモ'), findsOneWidget);
 
     await tester.binding.handlePopRoute();
     await tester.pump();

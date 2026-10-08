@@ -33,6 +33,9 @@ class HabitCheck extends StatefulWidget {
     required this.checked,
     required this.color,
     required this.onTap,
+    this.onSlide,
+    this.progress = 0,
+    this.goal = 1,
     this.checkKey,
     super.key,
   });
@@ -40,6 +43,9 @@ class HabitCheck extends StatefulWidget {
   final bool checked;
   final Color color;
   final VoidCallback onTap;
+  final VoidCallback? onSlide;
+  final int progress;
+  final int goal;
   final Key? checkKey;
 
   @override
@@ -48,9 +54,12 @@ class HabitCheck extends StatefulWidget {
 
 class _HabitCheckState extends State<HabitCheck> {
   var _pressed = false;
+  var _drag = 0.0;
 
   @override
   Widget build(BuildContext context) {
+    final goal = widget.goal < 1 ? 1 : widget.goal;
+    final fraction = (widget.progress / goal).clamp(0.0, 1.0);
     return GestureDetector(
       key: widget.checkKey,
       onTap: () async {
@@ -61,27 +70,80 @@ class _HabitCheckState extends State<HabitCheck> {
           setState(() => _pressed = false);
         }
       },
+      onHorizontalDragUpdate: (details) => _drag += details.delta.dx,
+      onHorizontalDragEnd: (_) {
+        if (_drag.abs() > 48) {
+          widget.onSlide?.call();
+        }
+        _drag = 0;
+      },
       child: AnimatedScale(
         scale: _pressed ? 0.86 : 1,
         duration: const Duration(milliseconds: 140),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          width: 64,
-          height: 64,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: widget.checked ? widget.color : Colors.transparent,
-            border: Border.all(color: widget.color, width: 3),
-          ),
-          child: Icon(
-            Icons.check,
-            color: widget.checked ? Colors.white : widget.color,
-            size: 32,
+        child: SizedBox(
+          width: 72,
+          height: 72,
+          child: CustomPaint(
+            painter: _RingPainter(
+              color: widget.color,
+              fraction: widget.checked ? 1 : fraction,
+              filled: widget.checked,
+            ),
+            child: Center(
+              child: Icon(
+                Icons.check,
+                color: widget.checked ? Colors.white : widget.color,
+                size: 32,
+              ),
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter({required this.color, required this.fraction, required this.filled});
+
+  final Color color;
+  final double fraction;
+  final bool filled;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 4;
+    final track = Paint()
+      ..color = color.withValues(alpha: 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6;
+    canvas.drawCircle(center, radius, track);
+    if (filled) {
+      canvas.drawCircle(center, radius - 6, Paint()..color = color);
+    }
+    if (fraction <= 0) {
+      return;
+    }
+    final arc = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -1.5708,
+      6.2832 * fraction,
+      false,
+      arc,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter oldDelegate) {
+    return oldDelegate.fraction != fraction ||
+        oldDelegate.filled != filled ||
+        oldDelegate.color != color;
   }
 }
 

@@ -23,6 +23,28 @@ class PackageInstaller {
     await _channel.invokeMethod<void>('install', {'path': path});
   }
 
+  static Future<bool> enqueueUpdate({
+    required String url,
+    required String version,
+    required String fileName,
+    required String installed,
+  }) async {
+    if (!Platform.isAndroid) {
+      return false;
+    }
+    try {
+      return await _channel.invokeMethod<bool>('enqueueUpdate', {
+            'url': url,
+            'version': version,
+            'fileName': fileName,
+            'installed': installed,
+          }) ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> openUrl(String url) async {
     if (!Platform.isAndroid) {
       return;

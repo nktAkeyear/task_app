@@ -53,6 +53,30 @@ List<int> _parts(String raw) {
   return [for (final piece in core.split('.')) int.tryParse(piece) ?? 0];
 }
 
+String safeUpdateToken(String version) {
+  return version.replaceAll(RegExp(r'[^0-9A-Za-z._-]'), '_');
+}
+
+String exportApkName(String version) => 'Tas-${safeUpdateToken(version)}.apk';
+
+/// Deletes a file only when the installed version is strictly newer.
+/// `tas-update.apk` has no version and is always removed.
+bool shouldDeleteUpdateFile(String fileName, String installed) {
+  var base = fileName;
+  const part = '.part';
+  if (base.endsWith(part)) {
+    base = base.substring(0, base.length - part.length);
+  }
+  if (base == 'tas-update.apk') {
+    return true;
+  }
+  final match = RegExp(r'^(?:tas|Tas)-(.+)\.apk$').firstMatch(base);
+  if (match == null) {
+    return false;
+  }
+  return compareVersions(installed, match.group(1)!) > 0;
+}
+
 ReleaseOffer? parseLatestRelease(String body, String installed) {
   final decoded = jsonDecode(body);
   if (decoded is! Map) {
@@ -196,39 +220,18 @@ Future<void> checkForUpdate(
     await _offerPage(context, offer.pageUrl, copy.downloadFailed);
     return;
   }
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      content: Row(
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(width: 16),
-          Expanded(child: Text(copy.downloading)),
-        ],
-      ),
-    ),
+  final queued = await PackageInstaller.enqueueUpdate(
+    url: offer.apkUrl!,
+    version: offer.version,
+    fileName: exportApkName(offer.version),
+    installed: installed,
   );
-  final file = await downloadApk(offer.apkUrl!);
-  if (context.mounted) {
-    Navigator.of(context, rootNavigator: true).pop();
-  }
   if (!context.mounted) {
     return;
   }
-  if (file == null) {
+  if (!queued) {
     await _offerPage(context, offer.pageUrl, copy.downloadFailed);
-    return;
   }
-  final allowed = await PackageInstaller.canInstall();
-  if (!context.mounted) {
-    return;
-  }
-  if (!allowed) {
-    await _offerPage(context, offer.pageUrl, copy.installBlocked);
-    return;
-  }
-  await PackageInstaller.install(file.path);
 }
 
 Future<void> _offerPage(
