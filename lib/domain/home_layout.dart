@@ -15,8 +15,7 @@ const homeSectionIds = [
   'matrix',
 ];
 
-const defaultHomeLayout =
-    'week,schedule,overdue,habits,pomodoro,diary,matrix';
+const defaultHomeLayout = 'week,schedule,overdue,habits,pomodoro,diary,matrix';
 
 List<HomeBlock> parseHomeLayout(String? raw) {
   final known = homeSectionIds.toSet();
@@ -43,5 +42,10 @@ List<HomeBlock> parseHomeLayout(String? raw) {
 }
 
 String encodeHomeLayout(List<HomeBlock> blocks) {
-  return blocks.map((block) => block.visible ? block.id : '-${block.id}').join(',');
+  final raw = blocks
+      .map((block) => block.visible ? block.id : '-${block.id}')
+      .join(',');
+  return parseHomeLayout(raw)
+      .map((block) => block.visible ? block.id : '-${block.id}')
+      .join(',');
 }

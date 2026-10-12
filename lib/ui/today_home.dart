@@ -24,6 +24,32 @@ class TodayHome extends StatefulWidget {
 
 class _TodayHomeState extends State<TodayHome> {
   late DateTime _day;
+  bool _editingLayout = false;
+  List<HomeBlock>? _pendingLayout;
+
+  Future<void> _saveLayout(List<HomeBlock> next) async {
+    if (_pendingLayout != null) return;
+    final repo = RepoScope.of(context);
+    setState(() => _pendingLayout = next);
+    try {
+      await repo.setHomeLayout(next);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(Copy.of(context).homeLayoutSaveFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _pendingLayout = null);
+    }
+  }
+
+  void _moveBlock(List<HomeBlock> blocks, int from, int to) {
+    if (to < 0 || to >= blocks.length) return;
+    final next = [...blocks];
+    next.insert(to, next.removeAt(from));
+    _saveLayout(next);
+  }
 
   @override
   void initState() {
@@ -36,9 +62,11 @@ class _TodayHomeState extends State<TodayHome> {
   Widget build(BuildContext context) {
     final repo = RepoScope.of(context);
     final copy = Copy.of(context);
-    final blocks = parseHomeLayout(repo.homeLayout);
+    final blocks = _pendingLayout ?? parseHomeLayout(repo.homeLayout);
     final today = startOfDay(DateTime.now());
     final shown = blocks.where((block) => block.visible).toList();
+    final displayed = _editingLayout ? blocks : shown;
+    final savingLayout = _pendingLayout != null;
     final weekOn = shown.any((block) => block.id == 'week');
     final scheduleDay = weekOn ? _day : today;
     return Scaffold(
@@ -48,63 +76,171 @@ class _TodayHomeState extends State<TodayHome> {
         onPressed: () => showAddSheet(context, day: scheduleDay),
         child: const Icon(Icons.add),
       ),
-      body: ListView(
+      body: ReorderableListView(
+        buildDefaultDragHandles: false,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-        children: [
-          Row(
-            children: [
-              Expanded(
+        onReorderItem: (from, to) {
+          if (_editingLayout && !savingLayout) _moveBlock(blocks, from, to);
+        },
+        header: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    copy.today,
+                    style: Theme.of(context).textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                TextButton.icon(
+                  key: const Key('home-layout'),
+                  onPressed: savingLayout
+                      ? null
+                      : () => setState(() => _editingLayout = !_editingLayout),
+                  icon: Icon(
+                    _editingLayout
+                        ? Icons.check
+                        : Icons.dashboard_customize_outlined,
+                  ),
+                  label: Text(
+                    _editingLayout ? copy.doneLabel : copy.homeLayout,
+                  ),
+                ),
+                IconButton(
+                  key: const Key('home-layout-settings'),
+                  tooltip: copy.homeLayoutSettings,
+                  onPressed: savingLayout
+                      ? null
+                      : () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (context) => const HomeLayoutPage(),
+                            ),
+                          );
+                        },
+                  icon: const Icon(Icons.tune),
+                ),
+              ],
+            ),
+            if (_editingLayout)
+              Text(copy.homeLayoutLead)
+            else if (shown.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
                 child: Text(
-                  copy.today,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
+                  copy.allBlocksHidden,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
-              TextButton(
-                key: const Key('home-layout'),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (context) => const HomeLayoutPage()),
-                  );
-                },
-                child: Text(copy.homeLayout),
-              ),
-            ],
-          ),
-          if (shown.isEmpty)
+          ],
+        ),
+        children: [
+          for (var index = 0; index < displayed.length; index++)
             Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                copy.allBlocksHidden,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              key: ValueKey('home-block-${displayed[index].id}'),
+              padding: const EdgeInsets.only(top: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_editingLayout)
+                    Row(
+                      children: [
+                        Switch(
+                          key: ValueKey(
+                            'home-inline-visible-${displayed[index].id}',
+                          ),
+                          value: displayed[index].visible,
+                          onChanged: savingLayout
+                              ? null
+                              : (visible) {
+                                  final next = [...blocks];
+                                  next[index] = HomeBlock(
+                                    displayed[index].id,
+                                    visible,
+                                  );
+                                  _saveLayout(next);
+                                },
+                        ),
+                        Expanded(
+                          child: Text(copy.homeSection(displayed[index].id)),
+                        ),
+                        IconButton(
+                          key: ValueKey(
+                            'home-inline-up-${displayed[index].id}',
+                          ),
+                          tooltip: copy.moveBlockUp,
+                          onPressed: savingLayout || index == 0
+                              ? null
+                              : () => _moveBlock(blocks, index, index - 1),
+                          icon: const Icon(Icons.arrow_upward),
+                        ),
+                        IconButton(
+                          key: ValueKey(
+                            'home-inline-down-${displayed[index].id}',
+                          ),
+                          tooltip: copy.moveBlockDown,
+                          onPressed: savingLayout || index == blocks.length - 1
+                              ? null
+                              : () => _moveBlock(blocks, index, index + 1),
+                          icon: const Icon(Icons.arrow_downward),
+                        ),
+                        ReorderableDragStartListener(
+                          key: ValueKey(
+                            'home-inline-drag-${displayed[index].id}',
+                          ),
+                          enabled: !savingLayout,
+                          index: index,
+                          child: Tooltip(
+                            message: copy.dragToReorder,
+                            child: Semantics(
+                              label: copy.dragToReorder,
+                              child: const SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: Icon(Icons.drag_indicator),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  // This key also preserves state when the edit toolbar is inserted.
+                  if (displayed[index].visible)
+                    KeyedSubtree(
+                      key: ValueKey('home-content-${displayed[index].id}'),
+                      child: switch (displayed[index].id) {
+                        'week' => _WeekStrip(
+                          selected: _day,
+                          today: today,
+                          tasks: repo.tasks,
+                          onSelect: (day) => setState(() => _day = day),
+                        ),
+                        'schedule' => _Schedule(
+                          day: scheduleDay,
+                          today: today,
+                          tasks: daySchedule(repo.tasks, scheduleDay),
+                          onOpen: widget.onOpen,
+                        ),
+                        'overdue' => _Overdue(
+                          tasks: repo.tasks
+                              .where((task) => isOverdue(task, today))
+                              .toList(),
+                          onOpen: widget.onOpen,
+                        ),
+                        'habits' => const _TodayHabits(),
+                        'pomodoro' => const _HomePomodoro(),
+                        'diary' => _HomeDiary(day: weekOn ? _day : null),
+                        'matrix' => _HomeMatrix(onOpen: widget.onOpen),
+                        _ => const SizedBox.shrink(),
+                      },
+                    ),
+                ],
               ),
             ),
-          for (final block in shown) ...[
-            const SizedBox(height: 20),
-            switch (block.id) {
-              'week' => _WeekStrip(
-                selected: _day,
-                today: today,
-                tasks: repo.tasks,
-                onSelect: (day) => setState(() => _day = day),
-              ),
-              'schedule' => _Schedule(
-                day: scheduleDay,
-                today: today,
-                tasks: daySchedule(repo.tasks, scheduleDay),
-                onOpen: widget.onOpen,
-              ),
-              'overdue' => _Overdue(
-                tasks: repo.tasks.where((task) => isOverdue(task, today)).toList(),
-                onOpen: widget.onOpen,
-              ),
-              'habits' => const _TodayHabits(),
-              'pomodoro' => const _HomePomodoro(),
-              'diary' => _HomeDiary(day: weekOn ? _day : null),
-              _ => _HomeMatrix(onOpen: widget.onOpen),
-            },
-          ],
         ],
       ),
     );
@@ -128,18 +264,30 @@ class _WeekStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final copy = Copy.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final monday = today.subtract(Duration(days: today.weekday - DateTime.monday));
+    final monday = today.subtract(
+      Duration(days: today.weekday - DateTime.monday),
+    );
     return Row(
       children: [
         for (var offset = 0; offset < 7; offset++)
           Expanded(
-            child: _day(context, monday.add(Duration(days: offset)), copy, scheme),
+            child: _day(
+              context,
+              monday.add(Duration(days: offset)),
+              copy,
+              scheme,
+            ),
           ),
       ],
     );
   }
 
-  Widget _day(BuildContext context, DateTime day, Copy copy, ColorScheme scheme) {
+  Widget _day(
+    BuildContext context,
+    DateTime day,
+    Copy copy,
+    ColorScheme scheme,
+  ) {
     final isToday = sameDay(day, today);
     final isSelected = sameDay(day, selected);
     final marked = tasks.any(
@@ -218,12 +366,16 @@ class _Schedule extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final timed = tasks.where((task) => task.dueHasTime).toList();
     final allday = tasks.where((task) => !task.dueHasTime).toList();
-    final empty = sameDay(day, today) ? copy.empty(TaskBoard.today) : copy.scheduleEmpty;
+    final empty = sameDay(day, today)
+        ? copy.empty(TaskBoard.today)
+        : copy.scheduleEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          sameDay(day, today) ? copy.today : copy.due(day, hasTime: false, now: today),
+          sameDay(day, today)
+              ? copy.today
+              : copy.due(day, hasTime: false, now: today),
           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         const SizedBox(height: 8),
@@ -231,8 +383,12 @@ class _Schedule extends StatelessWidget {
           Text(empty, style: TextStyle(color: scheme.onSurfaceVariant))
         else ...[
           if (timed.isNotEmpty) ...[
-            Text(copy.timedItems, style: TextStyle(color: scheme.onSurfaceVariant)),
-            for (final task in timed) _TaskLine(task: task, onOpen: onOpen, showTime: true),
+            Text(
+              copy.timedItems,
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
+            for (final task in timed)
+              _TaskLine(task: task, onOpen: onOpen, showTime: true),
           ],
           if (allday.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -265,7 +421,10 @@ class _Overdue extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (ordered.isEmpty)
-          Text(copy.overdueEmpty, style: TextStyle(color: scheme.onSurfaceVariant))
+          Text(
+            copy.overdueEmpty,
+            style: TextStyle(color: scheme.onSurfaceVariant),
+          )
         else
           for (final task in ordered) _TaskLine(task: task, onOpen: onOpen),
       ],
@@ -290,7 +449,10 @@ class _TodayHabits extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (habits.isEmpty)
-          Text(copy.habitsEmpty, style: TextStyle(color: scheme.onSurfaceVariant))
+          Text(
+            copy.habitsEmpty,
+            style: TextStyle(color: scheme.onSurfaceVariant),
+          )
         else
           for (final habit in habits)
             Padding(
@@ -311,7 +473,10 @@ class _TodayHabits extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(habit.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                        Text(
+                          habit.name,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
                         if (habit.goal > 1)
                           Text(
                             copy.habitProgress(habit.progress, habit.goal),
@@ -348,7 +513,10 @@ class _HomePomodoro extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(copy.pomodoro, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        Text(
+          copy.pomodoro,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
         const SizedBox(height: 8),
         Text(phase),
         Text(
@@ -381,16 +549,24 @@ class _HomeDiary extends StatefulWidget {
   State<_HomeDiary> createState() => _HomeDiaryState();
 }
 
-class _HomeDiaryState extends State<_HomeDiary> {
+class _HomeDiaryState extends State<_HomeDiary> with WidgetsBindingObserver {
   late DateTime _own;
   final _body = TextEditingController();
   Timer? _save;
   LocalTools? _tools;
-  var _ready = false;
+  String? _loadedDay;
+  bool _dirty = false;
+  bool _saveFailed = false;
+  final _pending = <String, String>{};
+  final _pendingRevision = <String, int>{};
+  final _failedDays = <String>{};
+  int _revision = 0;
+  Future<void> _saveTail = Future<void>.value();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final now = DateTime.now();
     _own = DateTime(now.year, now.month, now.day);
   }
@@ -400,7 +576,12 @@ class _HomeDiaryState extends State<_HomeDiary> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _tools = RepoScope.of(context).tools;
+    final tools = RepoScope.of(context).tools;
+    if (_tools != tools) {
+      _flush();
+      _tools = tools;
+      _loadedDay = null;
+    }
     _load();
   }
 
@@ -414,15 +595,23 @@ class _HomeDiaryState extends State<_HomeDiary> {
   }
 
   void _load() {
-    final stored = _tools?.diary[dayKey(_day)] ?? '';
-    if (_body.text != stored) {
-      _body.text = stored;
-    }
-    _ready = true;
+    final key = dayKey(_day);
+    if (_loadedDay == key && (_dirty || _pending.containsKey(key))) return;
+    final stored = _pending[key] ?? _tools?.diary[key] ?? '';
+    if (_body.text != stored) _body.text = stored;
+    _loadedDay = key;
+    _saveFailed = _failedDays.contains(key);
+    _dirty = _saveFailed;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _flush();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _save?.cancel();
     _flush();
     _body.dispose();
@@ -430,11 +619,38 @@ class _HomeDiaryState extends State<_HomeDiary> {
   }
 
   void _flush() {
+    _save?.cancel();
     final tools = _tools;
-    if (!_ready || tools == null) {
-      return;
-    }
-    tools.saveDiary(dayKey(_day), _body.text);
+    final key = _loadedDay;
+    if (!_dirty || tools == null || key == null) return;
+    final body = _body.text;
+    _dirty = false;
+    _pending[key] = body;
+    final revision = ++_revision;
+    _pendingRevision[key] = revision;
+    // Capture the loaded day and text before navigation or a block move.
+    _saveTail = _saveTail.then((_) async {
+      try {
+        await tools.saveDiary(key, body);
+        if (_pendingRevision[key] == revision) {
+          _pending.remove(key);
+          _pendingRevision.remove(key);
+          _failedDays.remove(key);
+        }
+        if (mounted && _loadedDay == key) {
+          setState(() => _saveFailed = _failedDays.contains(key));
+        }
+      } catch (_) {
+        if (_pendingRevision[key] != revision) return;
+        _failedDays.add(key);
+        if (mounted && _loadedDay == key && _body.text == body) {
+          setState(() {
+            _dirty = true;
+            _saveFailed = true;
+          });
+        }
+      }
+    });
   }
 
   @override
@@ -446,7 +662,10 @@ class _HomeDiaryState extends State<_HomeDiary> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(copy.diary, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        Text(
+          copy.diary,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
         const SizedBox(height: 8),
         if (widget.day == null)
           Row(
@@ -455,17 +674,23 @@ class _HomeDiaryState extends State<_HomeDiary> {
                 tooltip: copy.prevDay,
                 onPressed: () {
                   _flush();
-                  setState(() => _own = _own.subtract(const Duration(days: 1)));
+                  setState(
+                    () => _own = DateTime(_own.year, _own.month, _own.day - 1),
+                  );
                   _load();
                 },
                 icon: const Icon(Icons.chevron_left),
               ),
-              Expanded(child: Text(copy.diaryDate(_day), textAlign: TextAlign.center)),
+              Expanded(
+                child: Text(copy.diaryDate(_day), textAlign: TextAlign.center),
+              ),
               IconButton(
                 tooltip: copy.nextDay,
                 onPressed: () {
                   _flush();
-                  setState(() => _own = _own.add(const Duration(days: 1)));
+                  setState(
+                    () => _own = DateTime(_own.year, _own.month, _own.day + 1),
+                  );
                   _load();
                 },
                 icon: const Icon(Icons.chevron_right),
@@ -477,10 +702,14 @@ class _HomeDiaryState extends State<_HomeDiary> {
         if (!showSaved && stored.isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text(copy.diaryEmpty, style: TextStyle(color: scheme.onSurfaceVariant)),
+            child: Text(
+              copy.diaryEmpty,
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
           ),
         const SizedBox(height: 8),
         TextField(
+          key: const Key('home-diary-body'),
           controller: _body,
           minLines: 5,
           maxLines: 8,
@@ -495,15 +724,32 @@ class _HomeDiaryState extends State<_HomeDiary> {
             ),
           ),
           onChanged: (_) {
-            setState(() {});
+            setState(() {
+              _dirty = true;
+              _saveFailed = false;
+            });
             _save?.cancel();
             _save = Timer(const Duration(milliseconds: 300), _flush);
           },
         ),
-        if (showSaved)
+        if (showSaved ||
+            _dirty ||
+            _pending.containsKey(_loadedDay) ||
+            _saveFailed)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text(copy.savedLocally, style: TextStyle(color: scheme.onSurfaceVariant)),
+            child: _saveFailed
+                ? TextButton.icon(
+                    onPressed: _flush,
+                    icon: const Icon(Icons.refresh),
+                    label: Text('${copy.diarySaveFailed} ${copy.retry}'),
+                  )
+                : Text(
+                    _dirty || _pending.containsKey(_loadedDay)
+                        ? copy.diarySaving
+                        : copy.savedLocally,
+                    style: TextStyle(color: scheme.onSurfaceVariant),
+                  ),
           ),
       ],
     );
@@ -520,7 +766,9 @@ class _HomeMatrix extends StatelessWidget {
     final copy = Copy.of(context);
     final repo = RepoScope.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final open = repo.tasks.where((task) => !task.deleted && !task.isCompleted).toList();
+    final open = repo.tasks
+        .where((task) => !task.deleted && !task.isCompleted)
+        .toList();
     Color tint(int quadrant) {
       return switch (quadrant) {
         0 => scheme.errorContainer,
@@ -531,7 +779,10 @@ class _HomeMatrix extends StatelessWidget {
     }
 
     Widget cell(int quadrant) {
-      final tasks = open.where((task) => repo.tools.placements[task.id] == quadrant).take(3).toList();
+      final tasks = open
+          .where((task) => repo.tools.placements[task.id] == quadrant)
+          .take(3)
+          .toList();
       return Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
@@ -541,17 +792,27 @@ class _HomeMatrix extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(copy.quadrant(quadrant), style: const TextStyle(fontWeight: FontWeight.w800)),
+            Text(
+              copy.quadrant(quadrant),
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 6),
             if (tasks.isEmpty)
-              Text(copy.quadrantEmpty, style: TextStyle(color: scheme.onSurfaceVariant))
+              Text(
+                copy.quadrantEmpty,
+                style: TextStyle(color: scheme.onSurfaceVariant),
+              )
             else
               for (final task in tasks)
                 InkWell(
                   onTap: () => onOpen(task.id),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Text(task.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      task.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
           ],
@@ -562,7 +823,10 @@ class _HomeMatrix extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(copy.matrix, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        Text(
+          copy.matrix,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
         const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -594,7 +858,11 @@ class _HomeMatrix extends StatelessWidget {
 }
 
 class _TaskLine extends StatelessWidget {
-  const _TaskLine({required this.task, required this.onOpen, this.showTime = false});
+  const _TaskLine({
+    required this.task,
+    required this.onOpen,
+    this.showTime = false,
+  });
 
   final TaskModel task;
   final ValueChanged<String> onOpen;
@@ -619,8 +887,13 @@ class _TaskLine extends StatelessWidget {
         : '${task.dueAt!.hour.toString().padLeft(2, '0')}:${task.dueAt!.minute.toString().padLeft(2, '0')}';
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: showTime ? Text(time, style: const TextStyle(fontWeight: FontWeight.w800)) : null,
-      title: Text(task.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      leading: showTime
+          ? Text(time, style: const TextStyle(fontWeight: FontWeight.w800))
+          : null,
+      title: Text(
+        task.title,
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
       subtitle: subtitle.isEmpty ? null : Text(subtitle),
       onTap: () => onOpen(task.id),
     );

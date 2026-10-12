@@ -7,7 +7,7 @@ The interface is Japanese. Code, identifiers, and this README are English.
 ## What it does
 
 - Smart lists: 受信箱, 今日, 近日 (7 days), カレンダー, 完了, plus user lists (color, sort, archive, delete).
-- The home screen is a week strip and that day’s schedule (timed items, then all-day). Settings can show, hide, and reorder the week, the schedule, overdue tasks, and today’s habits.
+- The initial 今日 (Today) tab is the home screen; the inbox remains a separate task list. On home, ホームの並び opens inline layout editing. Drag a handle or use the up/down buttons to move any of the seven blocks: week, schedule, overdue tasks, habits, Pomodoro, diary, and matrix. Each block can also be hidden and restored. Layout changes are saved locally and survive restart; the tune button opens the compact layout settings and reset action.
 - The + button opens a sheet (title, list, priority, tags, memo, and the date controls). Save stays on the sheet. Details opens the full editor. Quick add no longer sits beside the button.
 - Dates open a month calendar and times open hour and minute wheels, in the app language. All-day hides the wheels. An empty end is a single due point.
 - Habits complete from the circle itself, on the habit screen and on today’s habits. The streak updates immediately.
@@ -16,7 +16,7 @@ The interface is Japanese. Code, identifiers, and this README are English.
 - Search across title and notes.
 - Task composer, shared by create details and edit: title, all-day, start and end, repeat, reminder, list color, priority, tags, and a memo. The detail view uses the same rows and opens that editor.
 - Tab switches do not push history. The home tab root has no back button. From another tab root, system back returns to the home tab once. System back pops only a real drill-in, such as a list or the full editor.
-- Offline tools, kept off the main three tabs: ポモドーロ (focus, short break, and long break minutes, optional task, finished-session count, remaining time on other screens), Eisenhower matrix (重要×緊急), daily habits (check, streak, last 7 days, color, archive, optional reminder), and one diary entry per day. They live in the same SQLite file and are not part of sync.
+- Offline tools, available from the Tools tab and home blocks: ポモドーロ (focus, short break, and long break minutes, optional task, finished-session count, remaining time on other screens), Eisenhower matrix (重要×緊急), daily habits (check, streak, last 7 days, color, archive, optional reminder), and one diary entry per day. Diary drafts save after typing pauses and when changing days or leaving the screen. They live in the same SQLite file and are not part of sync.
 - Settings store the accent color, language (日本語, English, 한국어), home tab (default 今日), and pomodoro durations. On launch, and from settings, the app checks GitHub for a newer release when online and asks before downloading an APK.
 - Light, dark, and system themes.
 - In-app reminders. OS local notifications are attempted on Android and Windows when the plugin initializes.

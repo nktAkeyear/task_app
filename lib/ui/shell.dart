@@ -85,16 +85,12 @@ class _TasShellState extends State<TasShell> {
     super.didChangeDependencies();
     final repo = RepoScope.of(context);
     if (!_tabReady) {
-      _tab = repo.homeTab.clamp(0, tabIds.length - 1);
+      _tab = _homeTab(repo);
       _tabReady = true;
-      final visible = [
-        for (final item in parseTabLayout(repo.tabLayout))
-          if (item.visible) item.id,
-      ];
-      final id = tabIds[_tab];
-      if (visible.isNotEmpty && !visible.contains(id)) {
-        _tab = tabIndex(visible.first);
-      }
+    } else if (!parseTabLayout(repo.tabLayout)
+        .any((item) => item.visible && item.id == tabIds[_tab])) {
+      _tab = _homeTab(repo);
+      _drill = null;
     }
     if (!_boardReady) {
       _boardReady = true;
@@ -219,12 +215,25 @@ class _TasShellState extends State<TasShell> {
     });
   }
 
+  int _homeTab(TaskRepository repo) {
+    final visible = parseTabLayout(repo.tabLayout)
+        .where((item) => item.visible)
+        .map((item) => item.id)
+        .toList();
+    final preferred = repo.homeTab.clamp(0, tabIds.length - 1);
+    if (visible.contains(tabIds[preferred])) {
+      return preferred;
+    }
+    // Keep layout settings reachable even if every tab has been hidden.
+    return visible.isEmpty ? tabIndex('settings') : tabIndex(visible.first);
+  }
+
   void _popBack() {
     if (_drill != null) {
       setState(() => _drill = null);
       return;
     }
-    final home = RepoScope.of(context).homeTab.clamp(0, tabIds.length - 1);
+    final home = _homeTab(RepoScope.of(context));
     if (_tab != home) {
       setState(() {
         _tab = home;
@@ -271,7 +280,7 @@ class _TasShellState extends State<TasShell> {
 
   void _openSettings(bool desktop) {
     if (desktop) {
-      setState(() => _board = TaskBoard.settings);
+      _selectSmart(TaskBoard.settings);
       return;
     }
     _selectTab(tabIndex('settings'));
@@ -334,9 +343,7 @@ class _TasShellState extends State<TasShell> {
             child: Padding(
               padding: inset,
               child: PopScope(
-                canPop:
-                    desktop ||
-                    (_drill == null && _tab == repo.homeTab.clamp(0, tabIds.length - 1)),
+                canPop: desktop || (_drill == null && _tab == _homeTab(repo)),
                 onPopInvokedWithResult: (didPop, _) {
                   if (!didPop) {
                     _popBack();
@@ -399,29 +406,36 @@ class _TasShellState extends State<TasShell> {
                       ),
                       BoardIntent: CallbackAction<BoardIntent>(
                         onInvoke: (intent) {
-                          _selectSmart(intent.board);
+                          if (desktop) {
+                            _selectSmart(intent.board);
+                          } else {
+                            setState(() => _drill = _Drill.board(intent.board));
+                          }
                           return null;
                         },
                       ),
                     },
-                    child: Scaffold(
-                      resizeToAvoidBottomInset: true,
-                      body: Column(
-                        children: [
-                          if (_notices.isNotEmpty) _banner(context, desktop),
-                          if (repo.tools.pomoRunning &&
-                              _desktopTool != 'pomodoro' &&
-                              _drill?.tool != 'pomodoro')
-                            PomoChip(
-                              onOpen: () =>
-                                  _openTool('pomodoro', desktop: desktop),
+                    child: Focus(
+                      autofocus: true,
+                      child: Scaffold(
+                        resizeToAvoidBottomInset: true,
+                        body: Column(
+                          children: [
+                            if (_notices.isNotEmpty) _banner(context, desktop),
+                            if (repo.tools.pomoRunning &&
+                                _desktopTool != 'pomodoro' &&
+                                _drill?.tool != 'pomodoro')
+                              PomoChip(
+                                onOpen: () =>
+                                    _openTool('pomodoro', desktop: desktop),
+                              ),
+                            Expanded(
+                              child: desktop ? _desktop(repo) : _mobile(repo),
                             ),
-                          Expanded(
-                            child: desktop ? _desktop(repo) : _mobile(repo),
-                          ),
-                        ],
+                          ],
+                        ),
+                        bottomNavigationBar: desktop ? null : _bottomNav(),
                       ),
-                      bottomNavigationBar: desktop ? null : _bottomNav(),
                     ),
                   ),
                 ),
@@ -654,8 +668,8 @@ class _TasShellState extends State<TasShell> {
                 _day = value;
                 _month = DateTime(value.year, value.month);
               }),
-            onOpen: (id) => _openTask(id, desktop: false),
-            searchFocus: _search,
+              onOpen: (id) => _openTask(id, desktop: false),
+              searchFocus: _search,
               onQuery: (value) => setState(() => _query = value),
             ),
           ),
@@ -735,10 +749,13 @@ class _TasShellState extends State<TasShell> {
   void _focusSearch(bool desktop) {
     if (!desktop) {
       setState(() => _drill = const _Drill.tool('search'));
-    } else if (_board == TaskBoard.settings || _desktopTool != null) {
+    } else if (_board == TaskBoard.settings ||
+        _board == TaskBoard.today ||
+        _desktopTool != null) {
       setState(() {
         _desktopTool = null;
         _board = TaskBoard.search;
+        _listId = null;
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _search.requestFocus());
@@ -768,9 +785,7 @@ class _TasShellState extends State<TasShell> {
 }
 
 class _Drill {
-  const _Drill.board(this.board)
-    : listId = null,
-      tool = null;
+  const _Drill.board(this.board) : listId = null, tool = null;
   const _Drill.list(this.listId) : board = TaskBoard.list, tool = null;
   const _Drill.tool(this.tool) : board = null, listId = null;
 
