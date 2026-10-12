@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
@@ -38,6 +39,16 @@ class LocalTools {
   final DateTime Function() now;
   final void Function() onChanged;
   final _uuid = const Uuid();
+  Future<void> _pomoTail = Future<void>.value();
+
+  // Timer ticks and button callbacks may overlap while SQLite is writing.
+  // Serialize complete state transitions so a phase is recorded only once.
+  Future<void> _withPomo(Future<void> Function() action) {
+    final previous = _pomoTail;
+    final done = Completer<void>();
+    _pomoTail = done.future;
+    return previous.then((_) => action()).whenComplete(done.complete);
+  }
 
   int focusMin = 25;
   int shortMin = 5;
@@ -125,7 +136,7 @@ class LocalTools {
     required int focus,
     required int shortBreak,
     required int longBreak,
-  }) async {
+  }) => _withPomo(() async {
     final previous = _phaseMs();
     focusMin = focus.clamp(1, 180);
     shortMin = shortBreak.clamp(1, 90);
@@ -135,7 +146,7 @@ class LocalTools {
       await _writePomo();
     }
     onChanged();
-  }
+  });
 
   Future<void> placeTask(String taskId, int quadrant) async {
     await db
@@ -158,7 +169,11 @@ class LocalTools {
     onChanged();
   }
 
-  Future<void> addHabit(String name, {int color = 0xFF1F4B4A, int goal = 1}) async {
+  Future<void> addHabit(
+    String name, {
+    int color = 0xFF1F4B4A,
+    int goal = 1,
+  }) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
       return;
@@ -284,13 +299,13 @@ class LocalTools {
     onChanged();
   }
 
-  Future<void> setPomoTask(String? taskId) async {
+  Future<void> setPomoTask(String? taskId) => _withPomo(() async {
     pomoTaskId = taskId;
     await _writePomo();
     onChanged();
-  }
+  });
 
-  Future<void> startPomo() async {
+  Future<void> startPomo() => _withPomo(() async {
     if (pomoRunning) {
       await _catchUp();
     }
@@ -301,26 +316,32 @@ class LocalTools {
     pomoAnchorMs = now().millisecondsSinceEpoch;
     await _writePomo();
     onChanged();
-  }
+  });
 
-  Future<void> pausePomo() async {
+  Future<void> pausePomo() => _withPomo(() async {
+    // An expired focus session must still be counted if pause beats the tick.
+    if (pomoRunning && displayRemainingMs <= 0) {
+      await _finishPhase();
+      onChanged();
+      return;
+    }
     pomoRemainingMs = displayRemainingMs;
     pomoRunning = false;
     pomoAnchorMs = null;
     await _writePomo();
     onChanged();
-  }
+  });
 
-  Future<void> resetPomo() async {
+  Future<void> resetPomo() => _withPomo(() async {
     phase = 'focus';
     pomoRemainingMs = _phaseMs();
     pomoRunning = false;
     pomoAnchorMs = null;
     await _writePomo();
     onChanged();
-  }
+  });
 
-  Future<void> tickPomo() async {
+  Future<void> tickPomo() => _withPomo(() async {
     if (!pomoRunning) {
       return;
     }
@@ -331,9 +352,9 @@ class LocalTools {
     }
     await _finishPhase();
     onChanged();
-  }
+  });
 
-  Future<void> _finishPhase() async {
+  Future<void> _finishPhase() => db.transaction(() async {
     if (phase == 'focus') {
       await db
           .into(db.pomodoroSessions)
@@ -353,7 +374,7 @@ class LocalTools {
     pomoRunning = false;
     pomoAnchorMs = null;
     await _writePomo();
-  }
+  });
 
   Future<void> _catchUp() async {
     if (!pomoRunning || pomoAnchorMs == null) {
@@ -460,9 +481,9 @@ class LocalTools {
   }
 
   Future<void> _deleteCheck(String habitId, String day) async {
-    await (db.delete(db.habitChecks)
-          ..where((row) => row.habitId.equals(habitId) & row.day.equals(day)))
-        .go();
+    await (db.delete(
+      db.habitChecks,
+    )..where((row) => row.habitId.equals(habitId) & row.day.equals(day))).go();
   }
 
   Future<void> _loadHabitMeta() async {
@@ -486,7 +507,8 @@ class LocalTools {
       }
       return {
         for (final entry in decoded.entries)
-          if (entry.value is num) entry.key.toString(): (entry.value as num).toInt(),
+          if (entry.value is num)
+            entry.key.toString(): (entry.value as num).toInt(),
       };
     } catch (_) {
       return {};

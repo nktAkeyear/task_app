@@ -34,6 +34,7 @@ class Copy {
     }
     return list.name;
   }
+
   String get back => pick('戻る', 'Back', '뒤로');
   String get backToLists => pick('リストへ戻る', 'Back to lists', '목록으로');
   String get open => pick('開く', 'Open', '열기');
@@ -140,11 +141,7 @@ class Copy {
   }
 
   String monthName(int month) {
-    return pick(
-      '$month月',
-      _enMonthFull(month),
-      '$month월',
-    );
+    return pick('$month月', _enMonthFull(month), '$month월');
   }
 
   String due(DateTime due, {required bool hasTime, required DateTime now}) {
@@ -428,11 +425,8 @@ class Copy {
     'Shown tabs appear along the bottom in this order. A hidden tab stays in this list.',
     '보이는 탭은 이 순서로 아래에 나옵니다. 숨긴 탭도 이 목록에 남습니다.',
   );
-  String get allTabsHidden => pick(
-    'すべてのタブが隠れています。',
-    'Every tab is hidden.',
-    '모든 탭이 숨겨져 있습니다.',
-  );
+  String get allTabsHidden =>
+      pick('すべてのタブが隠れています。', 'Every tab is hidden.', '모든 탭이 숨겨져 있습니다.');
   String get resetTabTitle =>
       pick('タブの並びを戻しますか？', 'Reset tab layout?', '탭 구성을 되돌릴까요?');
   String get resetTabBody => pick(
@@ -459,16 +453,29 @@ class Copy {
       _ => pick('リストと受信箱。', 'Lists and the inbox.', '목록과 받은편지함.'),
     };
   }
+
   String get homeLayoutLead => pick(
-    '表示中のブロックは、この順でホームに出ます。隠したブロックもこの一覧に残ります。',
-    'Shown blocks appear on Home in this order. A hidden block stays in this list.',
-    '보이는 블록은 이 순서로 홈에 나옵니다. 숨긴 블록도 이 목록에 남습니다.',
+    'ポモドーロや日記も含め、すべてのブロックをドラッグまたは矢印で並べ替えできます。スイッチで表示・非表示を切り替えます。',
+    'Reorder every block, including Pomodoro and Diary, with the drag handle or arrows. Use the switches to show or hide blocks.',
+    '뽀모도로와 일기를 포함한 모든 블록을 끌거나 화살표로 이동하세요. 스위치로 표시하거나 숨길 수 있습니다.',
   );
-  String get allBlocksHidden => pick(
-    'すべてのブロックが隠れています。',
-    'Every block is hidden.',
-    '모든 블록이 숨겨져 있습니다.',
+  String get homeLayoutSettings =>
+      pick('ホームの表示設定', 'Home display settings', '홈 표시 설정');
+  String get moveBlockUp => pick('上に移動', 'Move up', '위로 이동');
+  String get moveBlockDown => pick('下に移動', 'Move down', '아래로 이동');
+  String get homeLayoutSaveFailed => pick(
+    'ホームの並びを保存できませんでした。もう一度お試しください。',
+    'Could not save the home layout. Please try again.',
+    '홈 구성을 저장하지 못했습니다. 다시 시도해 주세요.',
   );
+  String get diarySaving => pick('保存中…', 'Saving…', '저장 중…');
+  String get diarySaveFailed => pick(
+    '日記を保存できませんでした。',
+    'Could not save the diary entry.',
+    '일기를 저장하지 못했습니다.',
+  );
+  String get allBlocksHidden =>
+      pick('すべてのブロックが隠れています。', 'Every block is hidden.', '모든 블록이 숨겨져 있습니다.');
   String get resetHomeTitle =>
       pick('ホームの並びを戻しますか？', 'Reset home layout?', '홈 구성을 되돌릴까요?');
   String get resetHomeBody => pick(
@@ -476,8 +483,7 @@ class Copy {
     'Show all seven blocks in the default order.',
     '블록 7개를 기본 순서로 모두 표시합니다.',
   );
-  String get dragToReorder =>
-      pick('ドラッグして並べ替え', 'Drag to reorder', '끌어 순서 변경');
+  String get dragToReorder => pick('ドラッグして並べ替え', 'Drag to reorder', '끌어 순서 변경');
   String get prevDay => pick('前の日', 'Previous day', '이전 날');
   String get nextDay => pick('次の日', 'Next day', '다음 날');
   String get oneStepCloser =>
@@ -523,36 +529,22 @@ class Copy {
       _ => habitsBlurb,
     };
   }
-  String get scheduleEmpty => pick(
-    'この日の予定はありません。',
-    'Nothing scheduled this day.',
-    '이 날의 일정이 없습니다.',
-  );
-  String get overdueEmpty => pick(
-    '期限切れのタスクはありません。',
-    'Nothing overdue.',
-    '기한이 지난 할 일이 없습니다.',
-  );
+
+  String get scheduleEmpty =>
+      pick('この日の予定はありません。', 'Nothing scheduled this day.', '이 날의 일정이 없습니다.');
+  String get overdueEmpty =>
+      pick('期限切れのタスクはありません。', 'Nothing overdue.', '기한이 지난 할 일이 없습니다.');
   String get timedItems => pick('時刻', 'Timed', '시간');
   String get fromText => pick('文章から追加', 'Add from text', '글에서 추가');
   String get moreDetails => pick('詳しく', 'Details', '자세히');
-  String get textImportHint =>
-      pick('文章を貼り付け', 'Paste text', '글을 붙여넣기');
-  String get pickTextFile =>
-      pick('テキストファイル', 'Text file', '텍스트 파일');
-  String get importPreview =>
-      pick('追加するタスク', 'Tasks to add', '추가할 할 일');
+  String get textImportHint => pick('文章を貼り付け', 'Paste text', '글을 붙여넣기');
+  String get pickTextFile => pick('テキストファイル', 'Text file', '텍스트 파일');
+  String get importPreview => pick('追加するタスク', 'Tasks to add', '추가할 할 일');
   String get confirmAdd => pick('追加する', 'Add', '추가');
-  String get textImportEmpty => pick(
-    'タスクになる行がありません。',
-    'No tasks to add.',
-    '추가할 할 일이 없습니다.',
-  );
-  String get textImportFailed => pick(
-    'テキストを読めませんでした。',
-    'Could not read that text.',
-    '글을 읽지 못했습니다.',
-  );
+  String get textImportEmpty =>
+      pick('タスクになる行がありません。', 'No tasks to add.', '추가할 할 일이 없습니다.');
+  String get textImportFailed =>
+      pick('テキストを読めませんでした。', 'Could not read that text.', '글을 읽지 못했습니다.');
   String get doneLabel => pick('決定', 'Done', '확인');
   String get thisDevice => pick('この端末', 'This device', '이 기기');
   String get deviceName => pick('端末名', 'Device name', '기기 이름');
@@ -568,12 +560,10 @@ class Copy {
       pick('未送信の変更: $count', 'Unsent changes: $count', '보내지 않은 변경: $count건');
   String get backup => pick('バックアップ', 'Backup', '백업');
   String get exportFile => pick('ファイルに書き出す', 'Export file', '파일로 내보내기');
-  String get exportDialog =>
-      pick('バックアップを書き出す', 'Export backup', '백업 내보내기');
+  String get exportDialog => pick('バックアップを書き出す', 'Export backup', '백업 내보내기');
   String get copyJson => pick('JSON をコピー', 'Copy JSON', 'JSON 복사');
   String get importFile => pick('ファイルから読み込む', 'Import file', '파일에서 가져오기');
-  String get importDialog =>
-      pick('バックアップを読み込む', 'Import backup', '백업 가져오기');
+  String get importDialog => pick('バックアップを読み込む', 'Import backup', '백업 가져오기');
   String get pasteJson => pick('JSON を貼り付け', 'Paste JSON', 'JSON 붙여넣기');
   String get keyboard => pick('キーボード', 'Keyboard', '키보드');
   String get shortcuts => pick(

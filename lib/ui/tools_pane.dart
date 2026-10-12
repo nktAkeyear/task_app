@@ -187,6 +187,7 @@ class PomodoroPage extends StatelessWidget {
         const SizedBox(height: 16),
         DropdownButtonFormField<String?>(
           key: ValueKey(tools.pomoTaskId),
+          isExpanded: true,
           initialValue: openTasks.any((task) => task.id == tools.pomoTaskId)
               ? tools.pomoTaskId
               : null,
@@ -194,7 +195,10 @@ class PomodoroPage extends StatelessWidget {
           items: [
             DropdownMenuItem<String?>(value: null, child: Text(copy.noTask)),
             for (final task in openTasks)
-              DropdownMenuItem(value: task.id, child: Text(task.title)),
+              DropdownMenuItem(
+                value: task.id,
+                child: Text(task.title, overflow: TextOverflow.ellipsis),
+              ),
           ],
           onChanged: tools.setPomoTask,
         ),
@@ -263,7 +267,7 @@ class MatrixPage extends StatelessWidget {
         Material(
           color: Theme.of(context).colorScheme.surfaceContainerLow,
           child: SizedBox(
-            height: 92,
+            height: 120,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -277,7 +281,7 @@ class MatrixPage extends StatelessWidget {
                       ),
                       const Spacer(),
                       TextButton(
-                        onPressed: () => _place(context, open),
+                        onPressed: () => showPlaceTaskDialog(context),
                         child: Text(copy.placeTask),
                       ),
                     ],
@@ -293,9 +297,12 @@ class MatrixPage extends StatelessWidget {
                             for (final task in unplaced)
                               Padding(
                                 padding: const EdgeInsets.only(right: 8),
-                                child: _TaskChip(
-                                  task: task,
-                                  onOpen: onOpenTask,
+                                child: SizedBox(
+                                  width: 240,
+                                  child: _TaskChip(
+                                    task: task,
+                                    onOpen: onOpenTask,
+                                  ),
                                 ),
                               ),
                           ],
@@ -307,10 +314,6 @@ class MatrixPage extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Future<void> _place(BuildContext context, List<TaskModel> tasks) {
-    return showPlaceTaskDialog(context);
   }
 }
 
@@ -326,61 +329,71 @@ Future<void> showPlaceTaskDialog(BuildContext context) async {
     return;
   }
   var taskId = tasks.first.id;
-    var quadrant = repo.tools.placements[taskId] ?? 0;
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setLocal) => AlertDialog(
-          title: Text(copy.placeTask),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: taskId,
-                items: [
-                  for (final task in tasks)
-                    DropdownMenuItem(value: task.id, child: Text(task.title)),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setLocal(() => taskId = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                initialValue: quadrant,
-                items: [
-                  for (var index = 0; index < 4; index++)
-                    DropdownMenuItem(
-                      value: index,
-                      child: Text(copy.quadrant(index)),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setLocal(() => quadrant = value);
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(copy.cancel),
+  var quadrant = repo.tools.placements[taskId] ?? 0;
+  final saved = await showDialog<bool>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setLocal) => AlertDialog(
+        title: Text(copy.placeTask),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              key: const Key('matrix-task'),
+              isExpanded: true,
+              initialValue: taskId,
+              items: [
+                for (final task in tasks)
+                  DropdownMenuItem(
+                    value: task.id,
+                    child: Text(task.title, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setLocal(() {
+                    taskId = value;
+                    quadrant = repo.tools.placements[taskId] ?? 0;
+                  });
+                }
+              },
             ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(copy.place),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              key: ValueKey('matrix-quadrant-$taskId'),
+              isExpanded: true,
+              initialValue: quadrant,
+              items: [
+                for (var index = 0; index < 4; index++)
+                  DropdownMenuItem(
+                    value: index,
+                    child: Text(copy.quadrant(index)),
+                  ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setLocal(() => quadrant = value);
+                }
+              },
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(copy.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(copy.place),
+          ),
+        ],
       ),
-    );
-    if (saved == true) {
-      await repo.tools.placeTask(taskId, quadrant);
-    }
+    ),
+  );
+  if (saved == true) {
+    await repo.tools.placeTask(taskId, quadrant);
+  }
 }
 
 class _Quadrant extends StatelessWidget {
@@ -561,13 +574,17 @@ class _HabitsPageState extends State<HabitsPage> {
                   IconButton(
                     key: const Key('habit-goal-less'),
                     tooltip: copy.decreaseGoal,
-                    onPressed: _goal <= 1 ? null : () => setState(() => _goal -= 1),
+                    onPressed: _goal <= 1
+                        ? null
+                        : () => setState(() => _goal -= 1),
                     icon: const Icon(Icons.remove),
                   ),
                   IconButton(
                     key: const Key('habit-goal-more'),
                     tooltip: copy.increaseGoal,
-                    onPressed: _goal >= 99 ? null : () => setState(() => _goal += 1),
+                    onPressed: _goal >= 99
+                        ? null
+                        : () => setState(() => _goal += 1),
                     icon: const Icon(Icons.add),
                   ),
                 ],
@@ -615,6 +632,9 @@ class _HabitsPageState extends State<HabitsPage> {
   }
 
   Future<void> _sync() async {
+    if (!mounted) {
+      return;
+    }
     final tools = RepoScope.of(context).tools;
     await OsNotifications.instance.syncHabits([
       ...tools.habits,
@@ -651,8 +671,18 @@ class _HabitCard extends StatelessWidget {
               progress: habit.progress,
               goal: habit.goal,
               checkKey: Key('habit-check-${habit.id}'),
-              onTap: () => logHabitFromUi(context, habit, tap: true, onChanged: onChanged),
-              onSlide: () => logHabitFromUi(context, habit, tap: false, onChanged: onChanged),
+              onTap: () => logHabitFromUi(
+                context,
+                habit,
+                tap: true,
+                onChanged: onChanged,
+              ),
+              onSlide: () => logHabitFromUi(
+                context,
+                habit,
+                tap: false,
+                onChanged: onChanged,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -712,6 +742,11 @@ class _HabitCard extends StatelessWidget {
                   value: 'remind',
                   child: Text(copy.reminderOptional),
                 ),
+                if (habit.reminderMinute != null)
+                  PopupMenuItem(
+                    value: 'clear-reminder',
+                    child: Text(copy.noReminder),
+                  ),
                 PopupMenuItem(
                   value: 'archive',
                   child: Text(
@@ -767,17 +802,20 @@ class _HabitCard extends StatelessWidget {
           return;
         }
         if (picked == null) {
-          await tools.setHabitReminder(habit.id, null);
-        } else {
-          await tools.setHabitReminder(
-            habit.id,
-            picked.hour * 60 + picked.minute,
-          );
+          return;
         }
+        await tools.setHabitReminder(
+          habit.id,
+          picked.hour * 60 + picked.minute,
+        );
+      case 'clear-reminder':
+        await tools.setHabitReminder(habit.id, null);
       case 'archive':
         await tools.setHabitArchived(habit.id, !habit.archived);
     }
-    await onChanged();
+    if (context.mounted) {
+      await onChanged();
+    }
   }
 
   Future<String?> _ask(
@@ -819,16 +857,23 @@ class DiaryPage extends StatefulWidget {
   State<DiaryPage> createState() => _DiaryPageState();
 }
 
-class _DiaryPageState extends State<DiaryPage> {
+class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
   late DateTime _day;
   final TextEditingController _body = TextEditingController();
   Timer? _save;
   LocalTools? _tools;
   var _seeded = false;
+  final Map<String, String> _drafts = {};
+  final Map<String, int> _draftRevisions = {};
+  final Map<String, int> _pending = {};
+  int _revision = 0;
+  final Set<String> _failed = {};
+  Future<void> _saveTail = Future<void>.value();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final now = DateTime.now();
     _day = DateTime(now.year, now.month, now.day);
   }
@@ -837,15 +882,26 @@ class _DiaryPageState extends State<DiaryPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _tools = RepoScope.of(context).tools;
-    if (_seeded) {
+    if (_seeded && _drafts.containsKey(dayKey(_day))) {
       return;
     }
     _seeded = true;
-    _body.text = _tools!.diary[dayKey(_day)] ?? '';
+    final stored = _tools!.diary[dayKey(_day)] ?? '';
+    if (_body.text != stored) {
+      _body.text = stored;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      _flush();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _save?.cancel();
     _flush();
     _body.dispose();
@@ -894,7 +950,11 @@ class _DiaryPageState extends State<DiaryPage> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              stored.isEmpty && _body.text.isEmpty
+              _failed.contains(dayKey(_day))
+                  ? copy.diarySaveFailed
+                  : _drafts.containsKey(dayKey(_day))
+                  ? copy.diarySaving
+                  : stored.isEmpty && _body.text.isEmpty
                   ? copy.diaryEmpty
                   : copy.savedLocally,
               style: TextStyle(color: scheme.onSurfaceVariant),
@@ -921,7 +981,10 @@ class _DiaryPageState extends State<DiaryPage> {
                   filled: false,
                   contentPadding: const EdgeInsets.all(16),
                 ),
-                onChanged: (_) {
+                onChanged: (text) {
+                  _drafts[dayKey(_day)] = text;
+                  _draftRevisions[dayKey(_day)] = ++_revision;
+                  _failed.remove(dayKey(_day));
                   _save?.cancel();
                   _save = Timer(const Duration(milliseconds: 300), _flush);
                   setState(() {});
@@ -935,13 +998,15 @@ class _DiaryPageState extends State<DiaryPage> {
   }
 
   void _shift(int days) {
-    final previous = dayKey(_day);
-    final text = _body.text;
+    _changeDay(DateTime(_day.year, _day.month, _day.day + days));
+  }
+
+  void _changeDay(DateTime day) {
+    _flush();
     setState(() {
-      _day = _day.add(Duration(days: days));
-      _body.text = _tools?.diary[dayKey(_day)] ?? '';
+      _day = day;
+      _body.text = _drafts[dayKey(_day)] ?? _tools?.diary[dayKey(_day)] ?? '';
     });
-    _tools?.saveDiary(previous, text);
   }
 
   Future<void> _pickDay() async {
@@ -954,16 +1019,42 @@ class _DiaryPageState extends State<DiaryPage> {
     if (picked == null || !mounted) {
       return;
     }
-    final previous = dayKey(_day);
-    final text = _body.text;
-    setState(() {
-      _day = DateTime(picked.year, picked.month, picked.day);
-      _body.text = _tools?.diary[dayKey(_day)] ?? '';
-    });
-    await _tools?.saveDiary(previous, text);
+    _changeDay(DateTime(picked.year, picked.month, picked.day));
   }
 
   void _flush() {
-    _tools?.saveDiary(dayKey(_day), _body.text);
+    _save?.cancel();
+    final tools = _tools;
+    if (tools == null) {
+      return;
+    }
+    for (final entry in _drafts.entries.toList()) {
+      final revision = _draftRevisions[entry.key]!;
+      if (_pending[entry.key] == revision) {
+        continue;
+      }
+      _pending[entry.key] = revision;
+      _saveTail = _saveTail.then((_) async {
+        try {
+          await tools.saveDiary(entry.key, entry.value);
+          if (_draftRevisions[entry.key] == revision) {
+            _drafts.remove(entry.key);
+            _draftRevisions.remove(entry.key);
+            _failed.remove(entry.key);
+          }
+        } catch (_) {
+          if (_draftRevisions[entry.key] == revision) {
+            _failed.add(entry.key);
+          }
+        } finally {
+          if (_pending[entry.key] == revision) {
+            _pending.remove(entry.key);
+          }
+          if (mounted) {
+            setState(() {});
+          }
+        }
+      });
+    }
   }
 }

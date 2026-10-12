@@ -1,16 +1,163 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tas/app.dart';
+import 'package:tas/data/local_tools.dart';
 import 'package:tas/data/tas_database.dart';
 import 'package:tas/data/task_repository.dart';
 import 'package:tas/domain/filters.dart';
 import 'package:tas/domain/models.dart';
 import 'package:tas/l10n/copy.dart';
+import 'package:tas/ui/tools_pane.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+
+  testWidgets(
+    'diary drafts survive day switches and flush before backgrounding',
+    (tester) async {
+      final repo = TaskRepository(TasDatabase.memory());
+      await repo.init();
+      final today = DateTime.now();
+      final todayKey = dayKey(today);
+      final previousKey = dayKey(
+        DateTime(today.year, today.month, today.day - 1),
+      );
+
+      await tester.pumpWidget(_toolsHarness(repo, const DiaryPage()));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Today draft');
+      expect(repo.tools.diary[todayKey], isNull);
+      await tester.tap(find.byIcon(Icons.chevron_left));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'Previous day draft');
+      await tester.tap(find.byIcon(Icons.chevron_right));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'Today draft',
+      );
+      expect(repo.tools.diary[todayKey], 'Today draft');
+      expect(repo.tools.diary[previousKey], 'Previous day draft');
+
+      await tester.enterText(find.byType(TextField), 'Saved before suspension');
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pumpAndSettle();
+      expect(repo.tools.diary[todayKey], 'Saved before suspension');
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await repo.db.close();
+    },
+  );
+
+  testWidgets('browsing empty diary days does not create database entries', (
+    tester,
+  ) async {
+    final repo = TaskRepository(TasDatabase.memory());
+    await repo.init();
+    await tester.pumpWidget(_toolsHarness(repo, const DiaryPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(await repo.db.select(repo.db.diaryEntries).get(), isEmpty);
+    await repo.db.close();
+  });
+
+  testWidgets('unplaced matrix tasks fit on a narrow screen and can be moved', (
+    tester,
+  ) async {
+    final repo = TaskRepository(TasDatabase.memory());
+    await repo.init();
+    await repo.createTask(title: 'Unplaced task', listId: inboxId);
+    final taskId = repo.tasks.single.id;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_toolsHarness(repo, const MatrixPage()));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Unplaced task'), findsOneWidget);
+
+    await tester.tap(find.byType(PopupMenuButton<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(const Copy('ja').quadrant(1)).last);
+    await tester.pumpAndSettle();
+    expect(repo.tools.placements[taskId], 1);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await repo.db.close();
+  });
+
+  testWidgets('switching matrix tasks preserves the selected task placement', (
+    tester,
+  ) async {
+    final repo = TaskRepository(TasDatabase.memory());
+    await repo.init();
+    await repo.createTask(title: 'First task', listId: inboxId);
+    await repo.createTask(title: 'Second task', listId: inboxId);
+    final first = repo.tasks.first;
+    final second = repo.tasks.last;
+    await repo.tools.placeTask(first.id, 0);
+    await repo.tools.placeTask(second.id, 3);
+
+    await tester.pumpWidget(_toolsHarness(repo, const MatrixPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(const Copy('ja').placeTask));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('matrix-task')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(second.title).last);
+    await tester.pumpAndSettle();
+    final quadrant = tester.state<FormFieldState<int>>(
+      find.byKey(ValueKey('matrix-quadrant-${second.id}')),
+    );
+    expect(quadrant.value, 3);
+    await tester.tap(find.text(const Copy('ja').place));
+    await tester.pumpAndSettle();
+    expect(repo.tools.placements[second.id], 3);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await repo.db.close();
+  });
+
+  testWidgets(
+    'cancelling habit reminder keeps it and explicit removal clears it',
+    (tester) async {
+      final repo = TaskRepository(TasDatabase.memory());
+      await repo.init();
+      await repo.tools.addHabit('Water');
+      final habitId = repo.tools.habits.single.id;
+      await repo.tools.setHabitReminder(habitId, 510);
+
+      await tester.pumpWidget(_toolsHarness(repo, const HabitsPage()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(const Copy('ja').reminderOptional));
+      await tester.pumpAndSettle();
+      final cancel = MaterialLocalizations.of(
+        tester.element(find.byType(TimePickerDialog)),
+      ).cancelButtonLabel;
+      await tester.tap(find.text(cancel));
+      await tester.pumpAndSettle();
+      expect(repo.tools.habits.single.reminderMinute, 510);
+
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(const Copy('ja').noReminder));
+      await tester.pumpAndSettle();
+      expect(repo.tools.habits.single.reminderMinute, isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await repo.db.close();
+    },
+  );
 
   testWidgets('text import parses 今日 and waits to confirm', (tester) async {
     final repo = TaskRepository(
@@ -112,7 +259,10 @@ void main() {
     await tester.pumpWidget(TasApp(repository: repo));
     await tester.pump();
 
-    expect(tester.getTopLeft(find.text('今日').first).dy, greaterThanOrEqualTo(48));
+    expect(
+      tester.getTopLeft(find.text('今日').first).dy,
+      greaterThanOrEqualTo(48),
+    );
     expect(
       tester.getBottomLeft(find.byType(NavigationBar)).dy,
       lessThanOrEqualTo(844 - 24),
@@ -269,57 +419,58 @@ void main() {
     expect(find.text('開始'), findsOneWidget);
   });
 
-  testWidgets('a habit goal above one shows partial progress before the streak', (
-    tester,
-  ) async {
-    final repo = TaskRepository(
-      TasDatabase.memory(),
-      now: () => DateTime(2026, 10, 1, 9),
-    );
-    await repo.init();
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'a habit goal above one shows partial progress before the streak',
+    (tester) async {
+      final repo = TaskRepository(
+        TasDatabase.memory(),
+        now: () => DateTime(2026, 10, 1, 9),
+      );
+      await repo.init();
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(TasApp(repository: repo));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('nav-tools')));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('tool-habits')));
-    await tester.pump();
+      await tester.pumpWidget(TasApp(repository: repo));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('nav-tools')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('tool-habits')));
+      await tester.pump();
 
-    await tester.tap(find.byKey(const Key('habit-goal-more')));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('habit-goal-more')));
-    await tester.pump();
-    expect(find.text('1日の目標 3'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('habit-goal-more')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('habit-goal-more')));
+      await tester.pump();
+      expect(find.text('1日の目標 3'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), '水を飲む');
-    await tester.tap(find.text('追加'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('0/3'), findsOneWidget);
-    expect(find.text('連続 0 日'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '水を飲む');
+      await tester.tap(find.text('追加'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text('0/3'), findsOneWidget);
+      expect(find.text('連続 0 日'), findsOneWidget);
 
-    await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('1/3'), findsOneWidget);
-    expect(find.text('連続 0 日'), findsOneWidget);
+      await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('1/3'), findsOneWidget);
+      expect(find.text('連続 0 日'), findsOneWidget);
 
-    await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('2/3'), findsOneWidget);
-    expect(find.text('連続 0 日'), findsOneWidget);
+      await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('2/3'), findsOneWidget);
+      expect(find.text('連続 0 日'), findsOneWidget);
 
-    await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('3/3'), findsOneWidget);
-    expect(find.text('連続 1 日'), findsOneWidget);
-  });
+      await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('3/3'), findsOneWidget);
+      expect(find.text('連続 1 日'), findsOneWidget);
+    },
+  );
 
   test('inbox and backup dialog titles follow the language', () {
     final inbox = ListModel(
@@ -453,6 +604,13 @@ void main() {
     expect(find.text('範囲'), findsWidgets);
     expect(repo.tasks.where((task) => task.title == '範囲'), isNotEmpty);
   });
+}
+
+Widget _toolsHarness(TaskRepository repo, Widget page) {
+  return RepoScope(
+    repository: repo,
+    child: MaterialApp(home: Scaffold(body: page)),
+  );
 }
 
 TaskModel _task({required DateTime due, DateTime? ends, bool hasTime = false}) {

@@ -283,7 +283,9 @@ class TasDatabase extends _$TasDatabase {
         await migrator.createTable(pomodoroSessions);
         await migrator.createTable(pomodoroStates);
       }
-      if (from < 4) {
+      // Tables created above already contain the current columns. Only v3
+      // databases need these columns added to their existing tables.
+      if (from >= 3 && from < 4) {
         await migrator.addColumn(habits, habits.color);
         await migrator.addColumn(habits, habits.archived);
         await migrator.addColumn(habits, habits.reminderMinute);
