@@ -26,7 +26,7 @@ The interface is Japanese. Code, identifiers, and this README are English.
 ## Requirements
 
 - Flutter 3.47 or newer (this tree was built with Flutter 3.47.6 / Dart 3.13).
-- Android: Android SDK (the app module uses Flutter's default compileSdk). Release builds currently sign with the debug keystore; replace that before publishing.
+- Android: Android SDK (the app module uses Flutter's default compileSdk). Updates must use the same signing key as the installed release.
 - Windows: Visual Studio with the "Desktop development with C++" workload.
 - Linux (dev): clang, cmake, ninja, gtk-3, sqlite3, and a CJK font such as Noto Sans CJK JP.
 
@@ -44,6 +44,17 @@ flutter run -d linux
 
 Release builds:
 
+For Android, create the ignored `android/key.properties` file before building:
+
+```properties
+storeFile=/absolute/path/to/tas-debug.keystore
+storePassword=your-store-password
+keyAlias=your-key-alias
+keyPassword=your-key-password
+```
+
+Use the existing release keystore. Generating another key, even with the same alias and passwords, prevents an in-place update. Keep the keystore and `key.properties` outside version control. Relative `storeFile` paths resolve from the `android` directory.
+
 ```bash
 flutter build apk
 flutter build windows
@@ -51,6 +62,8 @@ flutter build linux
 ```
 
 The Android Gradle wrapper is ignored by the Flutter template. `flutter build apk` / `flutter run -d android` recreates it.
+
+For an Android update, increase both the version name and build number in `pubspec.yaml`, then publish a normal GitHub release tagged `v<version>` with the signed APK attached. The app checks the latest release at startup and prompts before downloading; installation requires the user's confirmation in Android.
 
 ## Data
 
