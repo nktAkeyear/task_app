@@ -1,7 +1,31 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val signingProperties = Properties()
+val signingPropertiesFile = rootProject.file("key.properties")
+if (signingPropertiesFile.exists()) {
+    signingPropertiesFile.inputStream().use { signingProperties.load(it) }
+}
+
+val validateReleaseKey = tasks.register("validateReleaseKey") {
+    doLast {
+        for (name in listOf("storeFile", "storePassword", "keyAlias", "keyPassword")) {
+            require(!signingProperties.getProperty(name).isNullOrBlank()) {
+                "Set $name in android/key.properties before building a release."
+            }
+        }
+        require(rootProject.file(signingProperties.getProperty("storeFile")).isFile) {
+            "The release keystore configured in android/key.properties does not exist."
+        }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(validateReleaseKey)
 }
 
 android {
@@ -30,12 +54,10 @@ android {
 
     signingConfigs {
         create("tasRelease") {
-            storeFile = file(
-                "/cursor/stores/bc-87f8ca41-a146-4d7f-96a8-42cb7d908cce/internal/tas-debug.keystore",
-            )
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            storeFile = signingProperties.getProperty("storeFile")?.let { rootProject.file(it) }
+            storePassword = signingProperties.getProperty("storePassword")
+            keyAlias = signingProperties.getProperty("keyAlias")
+            keyPassword = signingProperties.getProperty("keyPassword")
         }
     }
 
