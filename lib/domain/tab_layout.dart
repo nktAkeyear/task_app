@@ -5,9 +5,22 @@ class TabItem {
   final bool visible;
 }
 
-const tabIds = ['lists', 'today', 'calendar', 'tools', 'settings'];
-
-const defaultTabLayout = 'lists,today,calendar,tools,settings';
+// Keep the original indices stable for the persisted homeTab preference.
+const tabIds = [
+  'lists',
+  'today',
+  'calendar',
+  'tools',
+  'settings',
+  'habits',
+  'diary',
+  'pomodoro',
+  'matrix',
+  'search',
+];
+const independentToolTabs = ['habits', 'diary', 'pomodoro', 'matrix', 'search'];
+const defaultTabLayout =
+    'today,lists,habits,diary,pomodoro,calendar,matrix,search,settings';
 
 int tabIndex(String id) {
   final index = tabIds.indexOf(id);
@@ -15,25 +28,30 @@ int tabIndex(String id) {
 }
 
 List<TabItem> parseTabLayout(String? raw) {
-  final known = tabIds.toSet();
+  final parts = (raw == null || raw.trim().isEmpty ? defaultTabLayout : raw)
+      .split(',');
   final result = <TabItem>[];
   final seen = <String>{};
-  for (final part in (raw ?? '').split(',')) {
+  // Explicit individual preferences win over the legacy group, regardless of order.
+  final explicit = parts
+      .map((part) => part.trim().replaceFirst(RegExp(r'^-'), ''))
+      .toSet();
+  for (final part in parts) {
     final token = part.trim();
-    if (token.isEmpty) {
-      continue;
-    }
     final hidden = token.startsWith('-');
     final id = hidden ? token.substring(1) : token;
-    if (!known.contains(id) || !seen.add(id)) {
-      continue;
+    if (id == 'tools') {
+      for (final tool in independentToolTabs) {
+        if (!explicit.contains(tool) && seen.add(tool)) {
+          result.add(TabItem(tool, !hidden));
+        }
+      }
+    } else if (tabIds.contains(id) && seen.add(id)) {
+      result.add(TabItem(id, !hidden));
     }
-    result.add(TabItem(id, !hidden));
   }
-  for (final id in tabIds) {
-    if (seen.add(id)) {
-      result.add(TabItem(id, true));
-    }
+  for (final id in defaultTabLayout.split(',')) {
+    if (seen.add(id)) result.add(TabItem(id, true));
   }
   return result;
 }

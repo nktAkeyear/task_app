@@ -178,7 +178,7 @@ class _TextImportPageState extends State<TextImportPage> {
         );
       }
       if (mounted) {
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(true);
       }
     } finally {
       if (mounted) {

@@ -421,24 +421,29 @@ class Copy {
   String get homeLayout => pick('ホームの並び', 'Home layout', '홈 구성');
   String get tabLayout => pick('タブの並び', 'Tab layout', '탭 구성');
   String get tabLayoutLead => pick(
-    '表示中のタブは、この順で下に出ます。隠したタブもこの一覧に残ります。',
-    'Shown tabs appear along the bottom in this order. A hidden tab stays in this list.',
-    '보이는 탭은 이 순서로 아래에 나옵니다. 숨긴 탭도 이 목록에 남습니다.',
+    '習慣・日記・ポモドーロも個別に配置できます。矢印かドラッグで順序を変更。下部のタブは横にスワイプできます。',
+    'Arrange habits, diary, and Pomodoro individually with arrows or drag. Swipe the bottom bar to see all tabs.',
+    '습관·일기·뽀모도로를 각각 배치하세요. 화살표나 끌기로 순서를 바꾸고 아래 탭을 옆으로 밀어 보세요.',
   );
   String get allTabsHidden =>
       pick('すべてのタブが隠れています。', 'Every tab is hidden.', '모든 탭이 숨겨져 있습니다.');
   String get resetTabTitle =>
       pick('タブの並びを戻しますか？', 'Reset tab layout?', '탭 구성을 되돌릴까요?');
   String get resetTabBody => pick(
-    '5つのタブを、初期の順ですべて表示します。',
-    'Show all five tabs in the default order.',
-    '탭 5개를 기본 순서로 모두 표시합니다.',
+    '各機能のタブを、初期の順ですべて表示します。',
+    'Show each feature tab in the default order.',
+    '각 기능 탭을 기본 순서로 모두 표시합니다.',
   );
   String tabLabel(String id) {
     return switch (id) {
       'today' => today,
       'calendar' => calendar,
       'tools' => tools,
+      'habits' => habits,
+      'diary' => diary,
+      'pomodoro' => pomodoro,
+      'matrix' => matrix,
+      'search' => search,
       'settings' => settings,
       _ => lists,
     };
@@ -446,6 +451,11 @@ class Copy {
 
   String tabDescription(String id) {
     return switch (id) {
+      'habits' => habitsBlurb,
+      'diary' => diaryBlurb,
+      'pomodoro' => pomodoroBlurb,
+      'matrix' => matrixBlurb,
+      'search' => searchBlurb,
       'today' => pick('今日のホーム。', 'Today’s home.', '오늘의 홈.'),
       'calendar' => pick('月の予定。', 'The month.', '한 달의 일정.'),
       'tools' => pick('習慣、日記、集中。', 'Habits, diary, and focus.', '습관, 일기, 집중.'),

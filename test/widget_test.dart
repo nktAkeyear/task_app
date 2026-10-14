@@ -359,7 +359,41 @@ void main() {
     expect(find.text('今日のタスクはありません。'), findsOneWidget);
   });
 
-  testWidgets('tools keep habits, the matrix, and the diary offline', (
+  testWidgets(
+    'independent tabs open habits, diary, matrix and focus directly',
+    (tester) async {
+      final repo = TaskRepository(TasDatabase.memory());
+      await repo.init();
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(const Duration(seconds: 1));
+        await repo.db.close();
+        repo.dispose();
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      await tester.pumpWidget(TasApp(repository: repo));
+      await tester.pumpAndSettle();
+      for (final id in ['habits', 'diary', 'matrix', 'pomodoro']) {
+        final destination = find.byKey(Key('nav-$id'));
+        await tester.ensureVisible(destination);
+        await tester.tap(destination);
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('back-in-app')), findsNothing);
+        if (id == 'habits') expect(find.byType(HabitsPage), findsOneWidget);
+        if (id == 'diary') {
+          expect(find.byKey(const Key('diary-body')), findsOneWidget);
+        }
+        if (id == 'matrix') expect(find.byType(MatrixPage), findsOneWidget);
+        if (id == 'pomodoro') expect(find.text('25:00'), findsOneWidget);
+      }
+      expect(find.byKey(const Key('nav-tools')), findsNothing);
+    },
+  );
+
+  testWidgets('habit quantity goal supports single tap progress and undo', (
     tester,
   ) async {
     final repo = TaskRepository(
@@ -367,110 +401,35 @@ void main() {
       now: () => DateTime(2026, 10, 1, 9),
     );
     await repo.init();
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(TasApp(repository: repo));
-    await tester.pump();
-
-    await tester.tap(find.byKey(const Key('nav-tools')));
-    await tester.pump();
-    expect(find.text('ポモドーロ'), findsOneWidget);
-    expect(find.text('マトリックス'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('tool-habits')));
-    await tester.pump();
-    expect(find.text('習慣はまだありません。'), findsOneWidget);
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await repo.db.close();
+      repo.dispose();
+    });
+    await tester.pumpWidget(_toolsHarness(repo, const HabitsPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('add-habit')));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '水を飲む');
-    await tester.tap(find.text('追加'));
+    await tester.tap(find.byKey(const Key('habit-goal-more')));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('水を飲む'), findsOneWidget);
-    expect(find.text('連続 0 日'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.check).first);
+    await tester.tap(find.byKey(const Key('habit-goal-more')));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('連続 1 日'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.check).first);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('連続 0 日'), findsOneWidget);
-
-    await tester.tap(find.text('戻る'));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('tool-matrix')));
-    await tester.pump();
-    expect(find.text('この区分のタスクはありません。'), findsWidgets);
-
-    await tester.tap(find.text('戻る'));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('tool-diary')));
-    await tester.pump();
-    expect(find.text('この日の日記はまだありません。'), findsOneWidget);
-    expect(find.byKey(const Key('diary-date')), findsOneWidget);
-
-    await tester.tap(find.text('戻る'));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('tool-pomodoro')));
-    await tester.pump();
-    expect(find.text('25:00'), findsOneWidget);
-    expect(find.text('開始'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('save-habit')));
+    await tester.pumpAndSettle();
+    final habitId = repo.tools.habits.single.id;
+    for (var amount = 1; amount <= 3; amount++) {
+      await tester.ensureVisible(find.byKey(Key('habit-check-$habitId')));
+      await tester.tap(find.byKey(Key('habit-check-$habitId')));
+      await tester.pumpAndSettle();
+      expect(repo.tools.habits.single.progress, amount);
+      expect(repo.tools.habits.single.streak, amount == 3 ? 1 : 0);
+    }
+    await tester.tap(find.byKey(Key('habit-minus-$habitId')));
+    await tester.pumpAndSettle();
+    expect(repo.tools.habits.single.progress, 2);
+    expect(repo.tools.habits.single.streak, 0);
   });
-
-  testWidgets(
-    'a habit goal above one shows partial progress before the streak',
-    (tester) async {
-      final repo = TaskRepository(
-        TasDatabase.memory(),
-        now: () => DateTime(2026, 10, 1, 9),
-      );
-      await repo.init();
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      await tester.pumpWidget(TasApp(repository: repo));
-      await tester.pump();
-      await tester.tap(find.byKey(const Key('nav-tools')));
-      await tester.pump();
-      await tester.tap(find.byKey(const Key('tool-habits')));
-      await tester.pump();
-
-      await tester.tap(find.byKey(const Key('habit-goal-more')));
-      await tester.pump();
-      await tester.tap(find.byKey(const Key('habit-goal-more')));
-      await tester.pump();
-      expect(find.text('1日の目標 3'), findsOneWidget);
-
-      await tester.enterText(find.byType(TextField), '水を飲む');
-      await tester.tap(find.text('追加'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('0/3'), findsOneWidget);
-      expect(find.text('連続 0 日'), findsOneWidget);
-
-      await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('1/3'), findsOneWidget);
-      expect(find.text('連続 0 日'), findsOneWidget);
-
-      await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('2/3'), findsOneWidget);
-      expect(find.text('連続 0 日'), findsOneWidget);
-
-      await tester.drag(find.byIcon(Icons.check), const Offset(80, 0));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('3/3'), findsOneWidget);
-      expect(find.text('連続 1 日'), findsOneWidget);
-    },
-  );
 
   test('inbox and backup dialog titles follow the language', () {
     final inbox = ListModel(
