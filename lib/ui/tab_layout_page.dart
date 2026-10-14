@@ -26,7 +26,9 @@ class TabLayoutPage extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: Text(
                   copy.tabLayoutLead,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
               Expanded(
@@ -49,6 +51,7 @@ class TabLayoutPage extends StatelessWidget {
                       key: ValueKey(item.id),
                       item: item,
                       index: index,
+                      count: items.length,
                       onVisible: (value) {
                         final next = [...items];
                         next[index] = TabItem(item.id, value);
@@ -102,7 +105,8 @@ class TabLayoutPage extends StatelessWidget {
       ),
     );
     if (yes == true && context.mounted) {
-      await RepoScope.of(context).setTabLayout(parseTabLayout(defaultTabLayout));
+      await RepoScope.of(context)
+          .setTabLayout(parseTabLayout(defaultTabLayout));
     }
   }
 }
@@ -116,6 +120,7 @@ class _LayoutRow extends StatelessWidget {
   const _LayoutRow({
     required this.item,
     required this.index,
+    required this.count,
     required this.onVisible,
     required this.onMove,
     super.key,
@@ -123,6 +128,7 @@ class _LayoutRow extends StatelessWidget {
 
   final TabItem item;
   final int index;
+  final int count;
   final ValueChanged<bool> onVisible;
   final ValueChanged<int> onMove;
 
@@ -136,13 +142,14 @@ class _LayoutRow extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 48,
+              width: 64,
               height: 48,
-              child: Switch(
-                value: item.visible,
-                onChanged: onVisible,
+              child: Semantics(
+                label: copy.tabLabel(item.id),
+                child: Switch(value: item.visible, onChanged: onVisible),
               ),
             ),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,12 +164,24 @@ class _LayoutRow extends StatelessWidget {
                 ],
               ),
             ),
+            IconButton(
+              tooltip: copy.moveBlockUp,
+              onPressed: index == 0 ? null : () => onMove(-1),
+              icon: const Icon(Icons.arrow_upward, size: 20),
+            ),
+            IconButton(
+              tooltip: copy.moveBlockDown,
+              onPressed: index == count - 1 ? null : () => onMove(1),
+              icon: const Icon(Icons.arrow_downward, size: 20),
+            ),
             ReorderableDragStartListener(
               index: index,
               child: Shortcuts(
                 shortcuts: const {
-                  SingleActivator(LogicalKeyboardKey.arrowUp, alt: true): _MoveRow(-1),
-                  SingleActivator(LogicalKeyboardKey.arrowDown, alt: true): _MoveRow(1),
+                  SingleActivator(LogicalKeyboardKey.arrowUp, alt: true):
+                      _MoveRow(-1),
+                  SingleActivator(LogicalKeyboardKey.arrowDown, alt: true):
+                      _MoveRow(1),
                 },
                 child: Actions(
                   actions: {

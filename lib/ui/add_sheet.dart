@@ -286,9 +286,11 @@ class _AddSheetState extends State<AddSheet> {
       return;
     }
     setState(() {
-      final startTimeSame = picked.start.hour == _pickerStart.hour &&
+      final startTimeSame =
+          picked.start.hour == _pickerStart.hour &&
           picked.start.minute == _pickerStart.minute;
-      final endTimeSame = picked.end.hour == _pickerEnd.hour &&
+      final endTimeSame =
+          picked.end.hour == _pickerEnd.hour &&
           picked.end.minute == _pickerEnd.minute;
       final keepAllDay = _allDay && startTimeSame && endTimeSame;
       if (keepAllDay) {
@@ -368,7 +370,8 @@ class _AddSheetState extends State<AddSheet> {
         reminder1d,
         custom,
       ],
-      label: (value) => value == custom ? copy.customMinutes : copy.reminder(value),
+      label: (value) =>
+          value == custom ? copy.customMinutes : copy.reminder(value),
       selected: _reminder.startsWith('m:') ? custom : _reminder,
     );
     if (picked == null || !mounted) {
@@ -397,7 +400,8 @@ class _AddSheetState extends State<AddSheet> {
           autofocus: true,
           keyboardType: TextInputType.number,
           decoration: InputDecoration(labelText: copy.customMinutes),
-          onSubmitted: (raw) => Navigator.pop(context, int.tryParse(raw.trim())),
+          onSubmitted: (raw) =>
+              Navigator.pop(context, int.tryParse(raw.trim())),
         ),
         actions: [
           TextButton(
@@ -405,7 +409,8 @@ class _AddSheetState extends State<AddSheet> {
             child: Text(copy.cancel),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, int.tryParse(field.text.trim())),
+            onPressed: () =>
+                Navigator.pop(context, int.tryParse(field.text.trim())),
             child: Text(copy.doneLabel),
           ),
         ],
@@ -434,7 +439,10 @@ class _AddSheetState extends State<AddSheet> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               for (final value in values)
                 ListTile(
@@ -450,13 +458,14 @@ class _AddSheetState extends State<AddSheet> {
   }
 
   Future<void> _pickList(TaskRepository repo, Copy copy) async {
-    final lists = repo.lists.where((list) => !list.deleted && !list.archived).toList()
-      ..sort((a, b) {
-        if (a.isInbox != b.isInbox) {
-          return a.isInbox ? -1 : 1;
-        }
-        return a.sortOrder.compareTo(b.sortOrder);
-      });
+    final lists =
+        repo.lists.where((list) => !list.deleted && !list.archived).toList()
+          ..sort((a, b) {
+            if (a.isInbox != b.isInbox) {
+              return a.isInbox ? -1 : 1;
+            }
+            return a.sortOrder.compareTo(b.sortOrder);
+          });
     final picked = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -467,7 +476,10 @@ class _AddSheetState extends State<AddSheet> {
             children: [
               for (final list in lists)
                 ListTile(
-                  leading: CircleAvatar(backgroundColor: Color(list.color), radius: 8),
+                  leading: CircleAvatar(
+                    backgroundColor: Color(list.color),
+                    radius: 8,
+                  ),
                   title: Text(copy.listTitle(list)),
                   trailing: list.id == _listId ? const Icon(Icons.check) : null,
                   onTap: () => Navigator.pop(context, list.id),
@@ -485,12 +497,21 @@ class _AddSheetState extends State<AddSheet> {
   Future<void> _openText() async {
     final navigator = Navigator.of(context);
     final listId = _listId;
-    navigator.pop();
-    await navigator.push(
-      MaterialPageRoute<void>(
+    // Keep this route and its draft alive while the text import is open.
+    FocusManager.instance.primaryFocus?.unfocus();
+    final imported = await navigator.push<bool>(
+      MaterialPageRoute<bool>(
         builder: (context) => TextImportPage(listId: listId),
       ),
     );
+    // An empty composer can close after a successful import. Back/cancel and
+    // an existing manual draft always return to this form.
+    if (imported == true &&
+        mounted &&
+        _title.text.trim().isEmpty &&
+        _notes.text.trim().isEmpty) {
+      navigator.pop();
+    }
   }
 
   Future<void> _save() async {
@@ -498,7 +519,8 @@ class _AddSheetState extends State<AddSheet> {
     final copy = Copy.of(context);
     final title = _title.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(copy.titleRequired)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(copy.titleRequired)));
       return;
     }
     setState(() => _saving = true);
@@ -519,7 +541,8 @@ class _AddSheetState extends State<AddSheet> {
       }
     } on FormatException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted) {
@@ -562,7 +585,9 @@ class _WhenLine extends StatelessWidget {
               Text(
                 time!,
                 key: timeKey,
-                style: const TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
+                style: const TextStyle(
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
               ),
           ],
         ),

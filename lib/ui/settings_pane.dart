@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../app.dart';
 import '../data/task_repository.dart';
 import '../l10n/copy.dart';
+import '../domain/tab_layout.dart';
 import '../update/app_update.dart';
 import 'home_layout_page.dart';
 import 'tab_layout_page.dart';
@@ -129,17 +130,11 @@ class _SettingsPaneState extends State<SettingsPane> {
         Wrap(
           spacing: 8,
           children: [
-            for (final entry in [0, 1, 2, 3, 4])
+            for (final id in defaultTabLayout.split(','))
               ChoiceChip(
-                label: Text(switch (entry) {
-                  0 => copy.lists,
-                  1 => copy.today,
-                  2 => copy.calendar,
-                  3 => copy.tools,
-                  _ => copy.settings,
-                }),
-                selected: repo.homeTab == entry,
-                onSelected: (_) => repo.setHomeTab(entry),
+                label: Text(copy.tabLabel(id)),
+                selected: repo.homeTab == tabIndex(id),
+                onSelected: (_) => repo.setHomeTab(tabIndex(id)),
               ),
           ],
         ),

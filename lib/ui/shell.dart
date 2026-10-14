@@ -17,6 +17,7 @@ import 'list_pane.dart';
 import 'settings_pane.dart';
 import 'task_pane.dart';
 import 'today_home.dart';
+import 'tab_layout_page.dart';
 import 'tools_pane.dart';
 import 'widgets.dart';
 
@@ -64,6 +65,7 @@ class _TasShellState extends State<TasShell> {
   late DateTime _month;
   late DateTime _day;
   final _search = FocusNode();
+  final _tabScroll = ScrollController();
   final _searchController = TextEditingController();
   final _notices = <TaskModel>[];
   Timer? _reminderTimer;
@@ -87,6 +89,10 @@ class _TasShellState extends State<TasShell> {
     if (!_tabReady) {
       _tab = _homeTab(repo);
       _tabReady = true;
+      if (independentToolTabs.contains(tabIds[_tab]) &&
+          tabIds[_tab] != 'search') {
+        _desktopTool = tabIds[_tab];
+      }
     } else if (!parseTabLayout(repo.tabLayout)
         .any((item) => item.visible && item.id == tabIds[_tab])) {
       _tab = _homeTab(repo);
@@ -99,6 +105,7 @@ class _TasShellState extends State<TasShell> {
         2 => TaskBoard.calendar,
         4 => TaskBoard.settings,
         1 => TaskBoard.today,
+        9 => TaskBoard.search,
         _ => TaskBoard.inbox,
       };
     }
@@ -163,6 +170,7 @@ class _TasShellState extends State<TasShell> {
     _reminderTimer?.cancel();
     _syncTimer?.cancel();
     _pomoTimer?.cancel();
+    _tabScroll.dispose();
     _search.dispose();
     _searchController.dispose();
     super.dispose();
@@ -220,7 +228,9 @@ class _TasShellState extends State<TasShell> {
         .where((item) => item.visible)
         .map((item) => item.id)
         .toList();
-    final preferred = repo.homeTab.clamp(0, tabIds.length - 1);
+    final preferred = repo.homeTab == 3
+        ? tabIndex('habits')
+        : repo.homeTab.clamp(0, tabIds.length - 1);
     if (visible.contains(tabIds[preferred])) {
       return preferred;
     }
@@ -303,7 +313,8 @@ class _TasShellState extends State<TasShell> {
     if (desktop) {
       board = _board;
       listId = _listId;
-    } else if (_drill?.tool == 'search') {
+    } else if (_drill?.tool == 'search' ||
+        (_drill == null && tabIds[_tab] == 'search')) {
       board = TaskBoard.search;
       listId = null;
     } else if (_drill?.board != null) {
@@ -628,9 +639,14 @@ class _TasShellState extends State<TasShell> {
     if (_tab == 1 && _drill == null) {
       return TodayHome(onOpen: (id) => _openTask(id, desktop: false));
     }
-    if (_tab == 3 && _drill == null) {
-      return ToolsMenu(
-        onOpen: (id) => setState(() => _drill = _Drill.tool(id)),
+    final directTool = tabIds[_tab];
+    if (independentToolTabs.contains(directTool) &&
+        directTool != 'search' &&
+        _drill == null) {
+      return ToolPage(
+        key: ValueKey(directTool),
+        id: directTool,
+        onOpenTask: (id) => _openTask(id, desktop: false),
       );
     }
     if (_tab == tabIndex('settings') && _drill == null) {
@@ -643,7 +659,8 @@ class _TasShellState extends State<TasShell> {
     if (visibleTabs.isEmpty && _drill == null) {
       return Center(child: Text(copy.allTabsHidden));
     }
-    final board = _drill?.tool == 'search'
+    final board =
+        _drill?.tool == 'search' || (_drill == null && tabIds[_tab] == 'search')
         ? TaskBoard.search
         : _drill?.board ??
               switch (_tab) {
@@ -698,27 +715,93 @@ class _TasShellState extends State<TasShell> {
     );
   }
 
-  Widget? _bottomNav() {
+  Widget _bottomNav() {
     final copy = Copy.of(context);
-    final visible = [
-      for (final item in parseTabLayout(RepoScope.of(context).tabLayout))
-        if (item.visible) item,
-    ];
-    if (visible.length < 2) {
-      return null;
-    }
+    final visible = parseTabLayout(RepoScope.of(context).tabLayout)
+        .where((item) => item.visible)
+        .toList();
     final current = tabIds[_tab.clamp(0, tabIds.length - 1)];
     final selected = visible.indexWhere((item) => item.id == current);
-    return NavigationBar(
-      selectedIndex: selected < 0 ? 0 : selected,
-      onDestinationSelected: (index) => _selectTab(tabIndex(visible[index].id)),
-      destinations: [
-        for (final item in visible)
-          NavigationDestination(
-            icon: Icon(_tabIcon(item.id), key: _tabKey(item.id)),
-            label: copy.tabLabel(item.id),
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      child: Row(
+        children: [
+          Expanded(
+            child: visible.length < 2
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      visible.isEmpty
+                          ? copy.allTabsHidden
+                          : copy.tabLabel(visible.single.id),
+                    ),
+                  )
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final itemWidth =
+                          88.0 *
+                          MediaQuery.textScalerOf(context)
+                              .scale(1)
+                              .clamp(1.0, 1.5);
+                      final width = (visible.length * itemWidth).clamp(
+                        constraints.maxWidth,
+                        double.infinity,
+                      );
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted ||
+                            !_tabScroll.hasClients ||
+                            selected < 0) {
+                          return;
+                        }
+                        final left = selected * width / visible.length;
+                        final right = left + width / visible.length;
+                        final offset = _tabScroll.offset;
+                        if (left < offset ||
+                            right > offset + constraints.maxWidth) {
+                          _tabScroll.jumpTo(
+                            (left - (constraints.maxWidth - itemWidth) / 2)
+                                .clamp(
+                                  0.0,
+                                  _tabScroll.position.maxScrollExtent,
+                                ),
+                          );
+                        }
+                      });
+                      return SingleChildScrollView(
+                        controller: _tabScroll,
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: width,
+                          child: NavigationBar(
+                            selectedIndex: selected < 0 ? 0 : selected,
+                            onDestinationSelected: (index) =>
+                                _selectTab(tabIndex(visible[index].id)),
+                            destinations: [
+                              for (final item in visible)
+                                NavigationDestination(
+                                  icon: Icon(
+                                    _tabIcon(item.id),
+                                    key: _tabKey(item.id),
+                                  ),
+                                  label: copy.tabLabel(item.id),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
-      ],
+          IconButton(
+            key: const Key('edit-tabs'),
+            tooltip: copy.tabLayout,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const TabLayoutPage()),
+            ),
+            icon: const Icon(Icons.tune),
+          ),
+        ],
+      ),
     );
   }
 
@@ -727,20 +810,17 @@ class _TasShellState extends State<TasShell> {
       'today' => Icons.today_outlined,
       'calendar' => Icons.calendar_month_outlined,
       'tools' => Icons.grid_view_outlined,
+      'habits' => Icons.repeat,
+      'diary' => Icons.menu_book_outlined,
+      'pomodoro' => Icons.timer_outlined,
+      'matrix' => Icons.grid_view_outlined,
+      'search' => Icons.search,
       'settings' => Icons.settings_outlined,
       _ => Icons.list_alt_outlined,
     };
   }
 
-  Key? _tabKey(String id) {
-    return switch (id) {
-      'today' => const Key('nav-today'),
-      'calendar' => const Key('nav-calendar'),
-      'tools' => const Key('nav-tools'),
-      'settings' => const Key('nav-settings'),
-      _ => const Key('nav-lists'),
-    };
-  }
+  Key _tabKey(String id) => Key('nav-$id');
 
   void _focusNew(bool desktop) {
     _openCreate(desktop);

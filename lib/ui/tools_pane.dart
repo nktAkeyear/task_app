@@ -9,79 +9,6 @@ import '../l10n/copy.dart';
 import '../reminders/os_notifications.dart';
 import 'widgets.dart';
 
-class ToolsMenu extends StatelessWidget {
-  const ToolsMenu({required this.onOpen, super.key});
-
-  final ValueChanged<String> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final copy = Copy.of(context);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-          child: Text(
-            copy.tools,
-            style: Theme.of(context).textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ),
-        _tile(
-          context,
-          'pomodoro',
-          Icons.timer_outlined,
-          copy.pomodoro,
-          copy.pomodoroBlurb,
-        ),
-        _tile(
-          context,
-          'matrix',
-          Icons.grid_view_outlined,
-          copy.matrix,
-          copy.matrixBlurb,
-        ),
-        _tile(context, 'habits', Icons.repeat, copy.habits, copy.habitsBlurb),
-        _tile(
-          context,
-          'diary',
-          Icons.menu_book_outlined,
-          copy.diary,
-          copy.diaryBlurb,
-        ),
-        _tile(context, 'search', Icons.search, copy.search, copy.searchBlurb),
-      ],
-    );
-  }
-
-  Widget _tile(
-    BuildContext context,
-    String id,
-    IconData icon,
-    String title,
-    String subtitle,
-  ) {
-    final scheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 0,
-      color: scheme.surfaceContainerLow,
-      child: ListTile(
-        key: Key('tool-$id'),
-        leading: CircleAvatar(
-          backgroundColor: scheme.primaryContainer,
-          foregroundColor: scheme.onPrimaryContainer,
-          child: Icon(icon),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => onOpen(id),
-      ),
-    );
-  }
-}
-
 class ToolPage extends StatelessWidget {
   const ToolPage({required this.id, this.onOpenTask, super.key});
 
@@ -533,108 +460,202 @@ class HabitsPage extends StatefulWidget {
 }
 
 class _HabitsPageState extends State<HabitsPage> {
-  final _name = TextEditingController();
-  var _goal = 1;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
+  Future<void> _showAdd() async {
+    final copy = Copy.of(context);
+    final name = TextEditingController();
+    var goal = 1;
+    var saving = false;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, update) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              24,
+              0,
+              24,
+              MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    copy.newHabit,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: name,
+                    autofocus: true,
+                    maxLength: 100,
+                    decoration: InputDecoration(
+                      labelText: copy.name,
+                      hintText: copy.pick(
+                        '例：水を飲む、読書する',
+                        'e.g. Drink water, read',
+                        '예: 물 마시기, 독서',
+                      ),
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => update(() {}),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(child: Text(copy.dailyGoal(goal))),
+                      IconButton.outlined(
+                        key: const Key('habit-goal-less'),
+                        tooltip: copy.decreaseGoal,
+                        onPressed: saving || goal <= 1
+                            ? null
+                            : () => update(() => goal--),
+                        icon: const Icon(Icons.remove),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton.outlined(
+                        key: const Key('habit-goal-more'),
+                        tooltip: copy.increaseGoal,
+                        onPressed: saving || goal >= 99
+                            ? null
+                            : () => update(() => goal++),
+                        icon: const Icon(Icons.add),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    key: const Key('save-habit'),
+                    onPressed: saving || name.text.trim().isEmpty
+                        ? null
+                        : () async {
+                            update(() => saving = true);
+                            try {
+                              await RepoScope.of(context).tools
+                                  .addHabit(name.text.trim(), goal: goal);
+                              if (sheetContext.mounted) {
+                                Navigator.pop(sheetContext);
+                              }
+                              await _sync();
+                            } finally {
+                              if (sheetContext.mounted) {
+                                update(() => saving = false);
+                              }
+                            }
+                          },
+                    icon: const Icon(Icons.add),
+                    label: Text(copy.add),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    // The bottom sheet's exit animation still owns its text field briefly.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    name.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final tools = RepoScope.of(context).tools;
     final copy = Copy.of(context);
-    return Column(
+    final scheme = Theme.of(context).colorScheme;
+    final complete = tools.habits.where((habit) => habit.checkedToday).length;
+    final total = tools.habits.length;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _name,
-                      decoration: InputDecoration(hintText: copy.newHabit),
-                      onSubmitted: _add,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () => _add(_name.text),
-                    child: Text(copy.add),
-                  ),
-                ],
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                copy.habits,
+                style: Theme.of(context).textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
-              Row(
-                children: [
-                  Expanded(child: Text(copy.dailyGoal(_goal))),
-                  IconButton(
-                    key: const Key('habit-goal-less'),
-                    tooltip: copy.decreaseGoal,
-                    onPressed: _goal <= 1
-                        ? null
-                        : () => setState(() => _goal -= 1),
-                    icon: const Icon(Icons.remove),
-                  ),
-                  IconButton(
-                    key: const Key('habit-goal-more'),
-                    tooltip: copy.increaseGoal,
-                    onPressed: _goal >= 99
-                        ? null
-                        : () => setState(() => _goal += 1),
-                    icon: const Icon(Icons.add),
-                  ),
-                ],
+            ),
+            FilledButton.icon(
+              key: const Key('add-habit'),
+              onPressed: _showAdd,
+              icon: const Icon(Icons.add),
+              label: Text(copy.add),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: scheme.primaryContainer,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                copy.pick('今日の達成', 'Today’s progress', '오늘의 달성'),
+                style: TextStyle(color: scheme.onPrimaryContainer),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$complete / $total',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: scheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                value: total == 0 ? 0 : complete / total,
+                minHeight: 8,
+                borderRadius: BorderRadius.circular(8),
+                semanticsLabel: copy.habits,
+                semanticsValue:
+                    '${total == 0 ? 0 : (complete * 100 / total).round()}',
+              ),
+              const SizedBox(height: 12),
+              Text(
+                copy.pick(
+                  '＋で記録、−で取り消し。少しずつ続けましょう。',
+                  'Tap + to log, − to undo. One step at a time.',
+                  '+로 기록하고 −로 취소하세요. 조금씩 계속해요.',
+                ),
+                style: TextStyle(color: scheme.onPrimaryContainer),
               ),
             ],
           ),
         ),
-        Expanded(
-          child: tools.habits.isEmpty && tools.archivedHabits.isEmpty
-              ? EmptyHint(message: copy.habitsEmpty, icon: Icons.repeat)
-              : ListView(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  children: [
-                    for (final habit in tools.habits)
-                      _HabitCard(habit: habit, onChanged: _sync),
-                    if (tools.archivedHabits.isNotEmpty)
-                      ExpansionTile(
-                        title: Text(copy.archivedHabits),
-                        children: [
-                          for (final habit in tools.archivedHabits)
-                            _HabitCard(habit: habit, onChanged: _sync),
-                        ],
-                      ),
-                  ],
+        const SizedBox(height: 16),
+        if (tools.habits.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: EmptyHint(message: copy.habitsEmpty, icon: Icons.repeat),
+          ),
+        for (final habit in tools.habits)
+          _HabitCard(key: ValueKey(habit.id), habit: habit, onChanged: _sync),
+        if (tools.archivedHabits.isNotEmpty)
+          ExpansionTile(
+            title: Text(copy.archivedHabits),
+            children: [
+              for (final habit in tools.archivedHabits)
+                _HabitCard(
+                  key: ValueKey(habit.id),
+                  habit: habit,
+                  onChanged: _sync,
                 ),
-        ),
+            ],
+          ),
       ],
     );
   }
 
-  Future<void> _add(String name) async {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) {
-      return;
-    }
-    final tools = RepoScope.of(context).tools;
-    final goal = _goal;
-    await tools.addHabit(trimmed, goal: goal);
-    if (!mounted) {
-      return;
-    }
-    _name.clear();
-    setState(() => _goal = 1);
-    await _sync();
-  }
-
   Future<void> _sync() async {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
     final tools = RepoScope.of(context).tools;
     await OsNotifications.instance.syncHabits([
       ...tools.habits,
@@ -643,116 +664,184 @@ class _HabitsPageState extends State<HabitsPage> {
   }
 }
 
-class _HabitCard extends StatelessWidget {
-  const _HabitCard({required this.habit, required this.onChanged});
-
+class _HabitCard extends StatefulWidget {
+  const _HabitCard({required this.habit, required this.onChanged, super.key});
   final HabitView habit;
   final Future<void> Function() onChanged;
+  @override
+  State<_HabitCard> createState() => _HabitCardState();
+}
+
+class _HabitCardState extends State<_HabitCard> {
+  HabitView get habit => widget.habit;
+  Future<void> Function() get onChanged => widget.onChanged;
+  bool _saving = false;
+
+  Future<void> _change(int delta) async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await RepoScope.of(context).tools.setHabitAmount(
+        habit.id,
+        (habit.progress + delta).clamp(0, habit.goal),
+      );
+      if (mounted) await onChanged();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final copy = Copy.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final reminder = habit.reminderMinute == null
-        ? copy.noReminder
-        : '${(habit.reminderMinute! ~/ 60).toString().padLeft(2, '0')}:${(habit.reminderMinute! % 60).toString().padLeft(2, '0')}';
+    final today = RepoScope.of(context).tools.now();
+    final weekdays = copy
+        .pick('月 火 水 木 金 土 日', 'M T W T F S S', '월 화 수 목 금 토 일')
+        .split(' ');
     return Card(
       elevation: 0,
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      margin: const EdgeInsets.only(bottom: 12),
       color: scheme.surfaceContainerLow,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
-        child: Row(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            HabitCheck(
-              checked: habit.checkedToday,
-              color: Color(habit.color),
-              progress: habit.progress,
-              goal: habit.goal,
-              checkKey: Key('habit-check-${habit.id}'),
-              onTap: () => logHabitFromUi(
-                context,
-                habit,
-                tap: true,
-                onChanged: onChanged,
-              ),
-              onSlide: () => logHabitFromUi(
-                context,
-                habit,
-                tap: false,
-                onChanged: onChanged,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+            Row(
+              children: [
+                Icon(
+                  habit.checkedToday ? Icons.check_circle : Icons.repeat,
+                  color: Color(habit.color),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
                     habit.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 4),
-                  if (habit.goal > 1)
-                    Text(
-                      copy.habitProgress(habit.progress, habit.goal),
-                      style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: copy.pick('習慣の設定', 'Habit settings', '습관 설정'),
+                  onSelected: (value) => _action(context, value),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(value: 'rename', child: Text(copy.rename)),
+                    PopupMenuItem(
+                      value: 'color',
+                      child: Text(copy.changeColor),
                     ),
-                  Text(copy.streak(habit.streak)),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      for (final done in habit.week)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 4),
-                          child: Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: done
-                                  ? Color(habit.color)
-                                  : scheme.outlineVariant,
-                            ),
-                          ),
-                        ),
-                    ],
+                    PopupMenuItem(
+                      value: 'remind',
+                      child: Text(copy.reminderOptional),
+                    ),
+                    if (habit.reminderMinute != null)
+                      PopupMenuItem(
+                        value: 'clear-reminder',
+                        child: Text(copy.noReminder),
+                      ),
+                    PopupMenuItem(
+                      value: 'archive',
+                      child: Text(
+                        habit.archived ? copy.unarchiveList : copy.archive,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    copy.streak(habit.streak),
+                    style: TextStyle(color: scheme.onSurfaceVariant),
                   ),
-                  const SizedBox(height: 4),
+                ),
+                if (habit.reminderMinute != null) ...[
+                  Icon(
+                    Icons.notifications_outlined,
+                    size: 16,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
                   Text(
-                    reminder,
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
+                    '${(habit.reminderMinute! ~/ 60).toString().padLeft(2, '0')}:${(habit.reminderMinute! % 60).toString().padLeft(2, '0')}',
                   ),
                 ],
-              ),
+              ],
             ),
-            PopupMenuButton<String>(
-              onSelected: (value) => _action(context, value),
-              itemBuilder: (context) => [
-                PopupMenuItem(value: 'rename', child: Text(copy.rename)),
-                PopupMenuItem(value: 'color', child: Text(copy.changeColor)),
-                PopupMenuItem(
-                  value: 'remind',
-                  child: Text(copy.reminderOptional),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                IconButton.outlined(
+                  key: Key('habit-minus-${habit.id}'),
+                  tooltip: copy.pick('1回取り消す', 'Undo one', '1회 취소'),
+                  onPressed: _saving || habit.archived || habit.progress <= 0
+                      ? null
+                      : () => _change(-1),
+                  icon: const Icon(Icons.remove),
                 ),
-                if (habit.reminderMinute != null)
-                  PopupMenuItem(
-                    value: 'clear-reminder',
-                    child: Text(copy.noReminder),
-                  ),
-                PopupMenuItem(
-                  value: 'archive',
-                  child: Text(
-                    habit.archived ? copy.unarchiveList : copy.archive,
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        copy.habitProgress(habit.progress, habit.goal),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        habit.checkedToday
+                            ? copy.completed
+                            : copy.dailyGoal(habit.goal),
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      ),
+                    ],
                   ),
                 ),
+                IconButton.filled(
+                  key: Key('habit-check-${habit.id}'),
+                  tooltip: copy.pick('1回記録する', 'Log one', '1회 기록'),
+                  onPressed: _saving || habit.archived || habit.checkedToday
+                      ? null
+                      : () => _change(1),
+                  icon: Icon(habit.checkedToday ? Icons.check : Icons.add),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                for (var i = 0; i < habit.week.length; i++)
+                  Expanded(
+                    child: Semantics(
+                      label:
+                          '${dayKey(DateTime(today.year, today.month, today.day - 6 + i))} ${habit.week[i] ? copy.completed : copy.pick('未達成', 'Incomplete', '미완료')}',
+                      child: Column(
+                        children: [
+                          Text(
+                            weekdays[DateTime(
+                                  today.year,
+                                  today.month,
+                                  today.day - 6 + i,
+                                ).weekday -
+                                1],
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                          const SizedBox(height: 6),
+                          Icon(
+                            habit.week[i]
+                                ? Icons.check_circle
+                                : Icons.circle_outlined,
+                            size: 20,
+                            color: habit.week[i]
+                                ? Color(habit.color)
+                                : scheme.outlineVariant,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ],
@@ -912,89 +1001,254 @@ class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final copy = Copy.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final stored = RepoScope.of(context).tools.diary[dayKey(_day)] ?? '';
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
-          child: Row(
+    final key = dayKey(_day);
+    final failed = _failed.contains(key);
+    final saving = _drafts.containsKey(key);
+    final today = dayKey(DateTime.now()) == key;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxHeight < 320;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              IconButton(
-                tooltip: copy.back,
-                onPressed: () => _shift(-1),
-                icon: const Icon(Icons.chevron_left),
+              if (!compact)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        copy.diary,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    TextButton.icon(
+                      key: const Key('diary-history'),
+                      onPressed: _showEntries,
+                      icon: const Icon(Icons.history_rounded),
+                      label: Text(copy.pick('過去の日記', 'Past entries', '지난 일기')),
+                    ),
+                  ],
+                ),
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: copy.pick('前の日', 'Previous day', '이전 날'),
+                    onPressed: () => _shift(-1),
+                    icon: const Icon(Icons.chevron_left),
+                  ),
+                  Expanded(
+                    child: TextButton.icon(
+                      key: const Key('diary-date'),
+                      onPressed: _pickDay,
+                      icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                      label: Text(
+                        copy.diaryDate(_day),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: copy.pick('次の日', 'Next day', '다음 날'),
+                    onPressed: () => _shift(1),
+                    icon: const Icon(Icons.chevron_right),
+                  ),
+                  if (!today)
+                    TextButton(
+                      key: const Key('diary-today'),
+                      onPressed: () {
+                        final now = DateTime.now();
+                        _changeDay(DateTime(now.year, now.month, now.day));
+                      },
+                      child: Text(copy.today),
+                    ),
+                ],
               ),
               Expanded(
-                child: TextButton(
-                  key: const Key('diary-date'),
-                  onPressed: _pickDay,
-                  child: Text(
-                    copy.diaryDate(_day),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerLow,
+                    border: Border.all(color: scheme.outlineVariant),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: TextField(
+                    key: const Key('diary-body'),
+                    controller: _body,
+                    expands: true,
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: const TextStyle(fontSize: 18, height: 1.7),
+                    textAlignVertical: TextAlignVertical.top,
+                    decoration: InputDecoration(
+                      hintText: copy.pick(
+                        '今日はどんな一日でしたか？\n出来事や気持ちを、自由に書いてみましょう。',
+                        'How was your day?\nWrite down a moment, a feeling, or a thought.',
+                        '오늘은 어떤 하루였나요?\n있었던 일이나 마음을 자유롭게 적어 보세요.',
+                      ),
+                      border: InputBorder.none,
+                      filled: false,
+                      contentPadding: const EdgeInsets.all(20),
                     ),
+                    onChanged: (text) {
+                      _drafts[dayKey(_day)] = text;
+                      _draftRevisions[dayKey(_day)] = ++_revision;
+                      _failed.remove(dayKey(_day));
+                      _save?.cancel();
+                      _save = Timer(const Duration(milliseconds: 300), _flush);
+                      setState(() {});
+                    },
                   ),
                 ),
               ),
-              IconButton(
-                onPressed: () => _shift(1),
-                icon: const Icon(Icons.chevron_right),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    failed
+                        ? Icons.error_outline
+                        : saving
+                        ? Icons.more_horiz
+                        : Icons.check_circle_outline,
+                    size: 16,
+                    color: failed ? scheme.error : scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Semantics(
+                      liveRegion: failed,
+                      child: Text(
+                        failed
+                            ? copy.diarySaveFailed
+                            : saving
+                            ? copy.diarySaving
+                            : copy.pick('保存済み', 'Saved', '저장됨'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: failed
+                              ? scheme.error
+                              : scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (failed)
+                    TextButton(onPressed: _flush, child: Text(copy.retry))
+                  else
+                    Text(
+                      copy.pick(
+                        '${_body.text.characters.length}文字',
+                        '${_body.text.characters.length} characters',
+                        '${_body.text.characters.length}자',
+                      ),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showEntries() async {
+    FocusScope.of(context).unfocus();
+    final copy = Copy.of(context);
+    final entries =
+        {...?_tools?.diary, ..._drafts}.entries
+            .where(
+              (entry) =>
+                  entry.value.trim().isNotEmpty &&
+                  DateTime.tryParse(entry.key) != null,
+            )
+            .toList()
+          ..sort((a, b) => b.key.compareTo(a.key));
+    final selected = await showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * .65,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 8, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        copy.pick('過去の日記', 'Past entries', '지난 일기'),
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: copy.close,
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: entries.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            copy.pick(
+                              '日記を書くと、ここから読み返せます。',
+                              'Your entries will appear here as you write.',
+                              '일기를 쓰면 여기에서 다시 읽을 수 있어요.',
+                            ),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: entries.length,
+                        separatorBuilder: (_, index) =>
+                            const Divider(height: 1, indent: 20, endIndent: 20),
+                        itemBuilder: (context, index) {
+                          final entry = entries[index];
+                          final date = DateTime.parse(entry.key);
+                          return ListTile(
+                            key: Key('diary-entry-${entry.key}'),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
+                            selected: entry.key == dayKey(_day),
+                            title: Text(copy.diaryDate(date)),
+                            subtitle: Text(
+                              entry.value.trim().replaceAll(
+                                RegExp(r'\s+'),
+                                ' ',
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                            ),
+                            onTap: () => Navigator.pop(context, date),
+                          );
+                        },
+                      ),
               ),
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              _failed.contains(dayKey(_day))
-                  ? copy.diarySaveFailed
-                  : _drafts.containsKey(dayKey(_day))
-                  ? copy.diarySaving
-                  : stored.isEmpty && _body.text.isEmpty
-                  ? copy.diaryEmpty
-                  : copy.savedLocally,
-              style: TextStyle(color: scheme.onSurfaceVariant),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: TextField(
-                controller: _body,
-                expands: true,
-                maxLines: null,
-                style: const TextStyle(fontSize: 18, height: 1.5),
-                textAlignVertical: TextAlignVertical.top,
-                decoration: InputDecoration(
-                  hintText: copy.diaryHint,
-                  border: InputBorder.none,
-                  filled: false,
-                  contentPadding: const EdgeInsets.all(16),
-                ),
-                onChanged: (text) {
-                  _drafts[dayKey(_day)] = text;
-                  _draftRevisions[dayKey(_day)] = ++_revision;
-                  _failed.remove(dayKey(_day));
-                  _save?.cancel();
-                  _save = Timer(const Duration(milliseconds: 300), _flush);
-                  setState(() {});
-                },
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
+    if (selected != null && mounted) _changeDay(selected);
   }
 
   void _shift(int days) {
