@@ -1,0 +1,52 @@
+name: Build Tas 1.6.2 for release signing
+on:
+  push:
+    branches: [codex/apk-build-artifact]
+    paths: [.github/workflows/apk-build-artifact.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CI: true
+      FLUTTER_SUPPRESS_ANALYTICS: true
+      DASH__SUPPRESS_ANALYTICS: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ab24160865c09c24b31785631bed99f48ab0f6fc
+          path: app
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: flutter/flutter
+          ref: 5fc346839b5d0eef006ed8404392afb4dfae428d
+          path: flutter-sdk
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Prepare temporary build signing
+        working-directory: app
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/build-only.jks" -storepass android -keypass android -alias build-only -keyalg RSA -keysize 2048 -validity 2 -dname "CN=Temporary CI Build"
+          printf 'storeFile=%s\nstorePassword=android\nkeyAlias=build-only\nkeyPassword=android\n' "$RUNNER_TEMP/build-only.jks" > android/key.properties
+      - name: Build exact merged source
+        working-directory: app
+        run: |
+          "$GITHUB_WORKSPACE/flutter-sdk/bin/flutter" build apk --release
+          git rev-parse HEAD > build/app/outputs/flutter-apk/source-commit.txt
+          printf 'This APK uses a temporary build key. It MUST be re-signed with the existing Tas release key before publication.\n' > build/app/outputs/flutter-apk/READ-BEFORE-PUBLISHING.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tas-1.6.2-for-release-signing
+          path: |
+            app/build/app/outputs/flutter-apk/app-release.apk
+            app/build/app/outputs/flutter-apk/source-commit.txt
+            app/build/app/outputs/flutter-apk/READ-BEFORE-PUBLISHING.txt
+          retention-days: 14
+          if-no-files-found: error
